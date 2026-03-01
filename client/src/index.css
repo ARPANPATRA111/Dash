@@ -1,0 +1,445 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@100..800&family=Fira+Code:wght@300..700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer base {
+  :root {
+    /* Core brand colors */
+    --void: 10 10 20;
+    --plasma: 123 97 255;
+    --ghost: 240 239 244;
+    --graphite: 24 24 27;
+
+    /* Light theme (default) */
+    --background: 240 239 244;
+    --foreground: 24 24 27;
+    --card: 255 255 255;
+    --card-foreground: 24 24 27;
+    --popover: 255 255 255;
+    --popover-foreground: 24 24 27;
+    --primary: 123 97 255;
+    --primary-foreground: 255 255 255;
+    --secondary: 241 245 249;
+    --secondary-foreground: 24 24 27;
+    --muted: 241 245 249;
+    --muted-foreground: 100 116 139;
+    --accent: 123 97 255;
+    --accent-foreground: 255 255 255;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --border: 226 232 240;
+    --input: 226 232 240;
+    --ring: 123 97 255;
+    --radius: 1rem;
+  }
+
+  .dark {
+    /* Dark theme */
+    --background: 10 10 20;
+    --foreground: 240 239 244;
+    --card: 22 22 35;
+    --card-foreground: 240 239 244;
+    --popover: 22 22 35;
+    --popover-foreground: 240 239 244;
+    --primary: 123 97 255;
+    --primary-foreground: 255 255 255;
+    --secondary: 30 30 46;
+    --secondary-foreground: 240 239 244;
+    --muted: 30 30 46;
+    --muted-foreground: 148 163 184;
+    --accent: 123 97 255;
+    --accent-foreground: 255 255 255;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --border: 45 45 68;
+    --input: 45 45 68;
+    --ring: 123 97 255;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply antialiased font-sans bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+.noise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+}
+
+.noise-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+@layer components {
+  .btn {
+    @apply relative inline-flex items-center justify-center gap-2 
+           px-5 py-2.5 rounded-xl font-semibold text-sm
+           transition-all duration-300 ease-magnetic
+           overflow-hidden select-none
+           focus:outline-none focus:ring-2 focus:ring-plasma/50 focus:ring-offset-2 
+           focus:ring-offset-background;
+  }
+
+  .btn:hover {
+    @apply scale-[1.02];
+  }
+
+  .btn:active {
+    @apply scale-[0.98];
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-plasma to-purple-500 text-white
+           shadow-lg shadow-plasma/25;
+  }
+
+  .btn-primary:hover {
+    @apply shadow-xl shadow-plasma/40;
+    background-position: 100% 0;
+  }
+
+  .btn-secondary {
+    @apply bg-white/80 dark:bg-void-100/80 
+           text-graphite dark:text-ghost
+           border-2 border-ghost-400/50 dark:border-void-100/50
+           backdrop-blur-sm
+           shadow-sm;
+  }
+
+  .btn-secondary:hover {
+    @apply border-plasma/50 shadow-md;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-graphite dark:text-ghost
+           hover:bg-ghost-400/30 dark:hover:bg-void-100/30
+           border border-transparent hover:border-ghost-400/50 dark:hover:border-void-100/50;
+  }
+
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-500 to-red-600 text-white
+           shadow-lg shadow-red-500/25;
+  }
+
+  .btn-danger:hover {
+    @apply shadow-xl shadow-red-500/40;
+  }
+
+  /* Glass button variant */
+  .btn-glass {
+    @apply bg-white/10 dark:bg-white/5 
+           backdrop-blur-md border border-white/20 dark:border-white/10
+           text-graphite dark:text-ghost
+           shadow-lg;
+  }
+
+  .btn-glass:hover {
+    @apply bg-white/20 dark:bg-white/10 shadow-xl;
+  }
+
+  /* Sliding background effect */
+  .btn-slide {
+    @apply relative overflow-hidden;
+  }
+
+  .btn-slide::before {
+    content: '';
+    @apply absolute inset-0 bg-white/20 
+           translate-x-[-100%] transition-transform duration-300 ease-out;
+  }
+
+  .btn-slide:hover::before {
+    @apply translate-x-0;
+  }
+
+  /* Icon button */
+  .btn-icon {
+    @apply p-2.5 rounded-xl aspect-square
+           bg-ghost-400/20 dark:bg-void-100/40
+           text-graphite dark:text-ghost
+           hover:bg-ghost-400/40 dark:hover:bg-void-100/60
+           hover:text-plasma dark:hover:text-plasma
+           transition-all duration-200;
+  }
+
+  .btn-icon:hover {
+    @apply scale-110;
+  }
+
+  /* Floating action button */
+  .btn-fab {
+    @apply rounded-full p-4 shadow-2xl
+           bg-gradient-to-br from-plasma to-purple-600 text-white
+           hover:shadow-glow;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-void-100 
+           rounded-3xl p-6
+           border border-ghost-400/30 dark:border-void-50/30
+           shadow-card transition-all duration-300;
+  }
+
+  .card:hover {
+    @apply shadow-card-hover;
+  }
+
+  .card-glass {
+    @apply bg-white/60 dark:bg-void-100/60 
+           backdrop-blur-xl
+           rounded-3xl p-6
+           border border-white/20 dark:border-void-50/20;
+  }
+}
+
+@layer components {
+  .input,
+  .input-field {
+    @apply w-full px-4 py-3 rounded-2xl
+           bg-ghost-400/30 dark:bg-void-100/50
+           border border-ghost-400 dark:border-void-50
+           text-graphite dark:text-ghost
+           placeholder:text-graphite/40 dark:placeholder:text-ghost/40
+           focus:outline-none focus:ring-2 focus:ring-plasma/50 focus:border-plasma
+           transition-all duration-200;
+  }
+
+  .input-sm {
+    @apply px-3 py-2 text-sm rounded-xl;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--plasma) / 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-plasma/30 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-plasma/50;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  .message-bubble {
+    @apply px-4 py-2.5 rounded-2xl max-w-[80%] break-words;
+  }
+
+  .message-bubble-sent {
+    @apply bg-plasma text-white rounded-br-md;
+  }
+
+  .message-bubble-received {
+    @apply bg-ghost-400/50 dark:bg-void-100 text-graphite dark:text-ghost rounded-bl-md;
+  }
+
+  .message-bubble-system {
+    @apply bg-ghost-400/30 dark:bg-void-100/50 text-graphite/70 dark:text-ghost/70 
+           text-center text-sm italic mx-auto;
+  }
+
+  .typing-indicator {
+    @apply flex items-center gap-1;
+  }
+
+  .typing-indicator span {
+    @apply w-2 h-2 rounded-full bg-plasma animate-typing;
+  }
+
+  .typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  .avatar {
+    @apply relative rounded-full overflow-hidden bg-plasma/20 
+           flex items-center justify-center font-medium text-plasma;
+  }
+
+  .avatar-xs { @apply w-6 h-6 text-xs; }
+  .avatar-sm { @apply w-8 h-8 text-sm; }
+  .avatar-md { @apply w-10 h-10 text-base; }
+  .avatar-lg { @apply w-12 h-12 text-lg; }
+  .avatar-xl { @apply w-16 h-16 text-xl; }
+
+  .online-indicator {
+    @apply absolute bottom-0 right-0 w-3 h-3 
+           bg-success rounded-full 
+           border-2 border-white dark:border-void;
+  }
+
+  .offline-indicator {
+    @apply absolute bottom-0 right-0 w-3 h-3 
+           bg-graphite/30 dark:bg-ghost/30 rounded-full 
+           border-2 border-white dark:border-void;
+  }
+}
+
+@layer utilities {
+  .hover-lift {
+    @apply transition-transform duration-200 ease-magnetic;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-0.5;
+  }
+
+  .fade-in-up {
+    animation: fadeInUp 0.4s ease-out forwards;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .glow-effect {
+    @apply relative;
+  }
+
+  .glow-effect::after {
+    content: '';
+    @apply absolute inset-0 rounded-inherit opacity-0 
+           transition-opacity duration-300
+           bg-plasma/10 blur-xl -z-10;
+  }
+
+  .glow-effect:hover::after {
+    @apply opacity-100;
+  }
+}
+
+@layer utilities {
+  .sidebar {
+    @apply w-80 h-full flex flex-col
+           bg-white dark:bg-void-100
+           border-r border-ghost-400/30 dark:border-void-50/30;
+  }
+
+  .main-content {
+    @apply flex-1 flex flex-col h-full overflow-hidden;
+  }
+
+  .chat-header {
+    @apply px-6 py-4 flex items-center gap-4
+           border-b border-ghost-400/30 dark:border-void-50/30
+           bg-white/80 dark:bg-void-100/80 backdrop-blur-sm;
+  }
+
+  .chat-messages {
+    @apply flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin;
+  }
+
+  .chat-input-area {
+    @apply p-4 border-t border-ghost-400/30 dark:border-void-50/30
+           bg-white/80 dark:bg-void-100/80 backdrop-blur-sm;
+  }
+}
+
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-plasma ring-offset-2 
+           ring-offset-white dark:ring-offset-void;
+  }
+
+  ::selection {
+    @apply bg-plasma/30 text-graphite dark:text-ghost;
+  }
+}
+
+@layer utilities {
+  .mobile-only {
+    @apply block md:hidden;
+  }
+
+  .desktop-only {
+    @apply hidden md:block;
+  }
+}
+
+.compact .chat-messages {
+  @apply space-y-1 p-3;
+}
+
+.compact .message-bubble {
+  @apply py-1.5 px-3;
+}
+
+.compact .chat-header {
+  @apply py-2 px-4;
+}
+
+.compact .sidebar-item {
+  @apply py-2 px-3;
+}
+
+.compact .avatar {
+  @apply w-8 h-8 text-xs;
+}
+
+.compact .text-base {
+  font-size: 0.875rem;
+}
+
+.compact .text-sm {
+  font-size: 0.75rem;
+}
