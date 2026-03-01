@@ -9,6 +9,7 @@ export function GoogleAuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isScriptReady, setIsScriptReady] = useState(false);
+  const [buttonWidth, setButtonWidth] = useState(320);
   const buttonRef = useRef<HTMLDivElement>(null);
 
   const theme = useUIStore((state) => state.theme);
@@ -20,6 +21,19 @@ export function GoogleAuthScreen() {
   const previousEmail = useAuthStore((state) => state.userEmail);
 
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+  useEffect(() => {
+    const updateButtonWidth = () => {
+      const viewportWidth = window.innerWidth;
+      const horizontalPadding = viewportWidth < 640 ? 64 : 96;
+      const width = Math.max(220, Math.min(320, viewportWidth - horizontalPadding));
+      setButtonWidth(width);
+    };
+
+    updateButtonWidth();
+    window.addEventListener('resize', updateButtonWidth);
+    return () => window.removeEventListener('resize', updateButtonWidth);
+  }, []);
 
   useEffect(() => {
     let canceled = false;
@@ -50,6 +64,7 @@ export function GoogleAuthScreen() {
 
             setIsLoading(true);
             setError(null);
+            let authenticated = false;
             try {
               const payload = parseGoogleIdTokenPayload(response.credential);
 
@@ -68,12 +83,28 @@ export function GoogleAuthScreen() {
                 avatarUrl: payload.picture ?? null,
               });
               setIsAuthenticated(true);
+              authenticated = true;
 
               disconnectFromSpacetimeDB();
               await connectToSpacetimeDB();
-              await loginWithEmail(normalizedEmail);
+
+              try {
+                await loginWithEmail(normalizedEmail);
+              } catch (loginError) {
+                const message = loginError instanceof Error ? loginError.message : String(loginError);
+                const normalizedMessage = message.toLowerCase();
+                const isNewUserFlow =
+                  normalizedMessage.includes('email not found') ||
+                  normalizedMessage.includes('sign up first');
+
+                if (!isNewUserFlow) {
+                  throw loginError;
+                }
+              }
             } catch (oauthError) {
-              setIsAuthenticated(false);
+              if (!authenticated) {
+                setIsAuthenticated(false);
+              }
               setError(oauthError instanceof Error ? oauthError.message : 'Google sign-in failed.');
             } finally {
               setIsLoading(false);
@@ -88,7 +119,7 @@ export function GoogleAuthScreen() {
             size: 'large',
             text: 'continue_with',
             shape: 'pill',
-            width: 320,
+            width: buttonWidth,
           });
         }
 
@@ -103,14 +134,14 @@ export function GoogleAuthScreen() {
     return () => {
       canceled = true;
     };
-  }, [googleClientId, previousEmail, setIsAuthenticated, setOauthProfile, setToken, setUserEmail, theme]);
+  }, [buttonWidth, googleClientId, previousEmail, setIsAuthenticated, setOauthProfile, setToken, setUserEmail, theme]);
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return (
-    <div className="min-h-screen bg-ghost dark:bg-void flex flex-col items-center justify-center p-6">
+    <div className="min-h-[100dvh] bg-ghost dark:bg-void flex flex-col items-center justify-center p-4 sm:p-6">
       <motion.button
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -131,7 +162,7 @@ export function GoogleAuthScreen() {
         </AnimatePresence>
       </motion.button>
 
-      <div className="w-full max-w-md bg-white/85 dark:bg-graphite/60 backdrop-blur-2xl rounded-[2rem] p-8 border border-ghost-400/50 dark:border-void-50/50 shadow-2xl text-center">
+      <div className="w-full max-w-md bg-white/85 dark:bg-graphite/60 backdrop-blur-2xl rounded-3xl sm:rounded-[2rem] p-5 sm:p-8 border border-ghost-400/50 dark:border-void-50/50 shadow-2xl text-center">
         <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-plasma via-plasma/80 to-purple-600 flex items-center justify-center shadow-glow mb-5">
           <Lock className="w-8 h-8 text-white" />
         </div>
@@ -141,8 +172,8 @@ export function GoogleAuthScreen() {
           Sign in with Google first, then create your Dash profile.
         </p>
 
-        <div className="flex justify-center min-h-11">
-          <div ref={buttonRef} />
+        <div className="flex justify-center min-h-11 w-full overflow-hidden">
+          <div ref={buttonRef} className="w-full flex justify-center" />
         </div>
 
         {!isScriptReady && !error && (
