@@ -1410,15 +1410,24 @@ pub fn add_reaction(ctx: &ReducerContext, message_id: u64, emoji: String) -> Res
         return Err("You are not a member of this conversation".to_string());
     }
     
-    // Check if already reacted with same emoji
-    let existing = ctx.db.message_reaction()
+    let existing_reaction = ctx.db.message_reaction()
         .iter()
-        .any(|r| r.message_id == message_id && r.user_identity == ctx.sender && r.emoji == emoji);
-    
-    if existing {
-        return Err("You already reacted with this emoji".to_string());
+        .find(|r| r.message_id == message_id && r.user_identity == ctx.sender);
+
+    if let Some(existing) = existing_reaction {
+        if existing.emoji == emoji {
+            ctx.db.message_reaction().reaction_id().delete(existing.reaction_id);
+            return Ok(());
+        }
+
+        ctx.db.message_reaction().reaction_id().update(MessageReaction {
+            emoji,
+            created_at: ctx.timestamp,
+            ..existing
+        });
+        return Ok(());
     }
-    
+
     ctx.db.message_reaction().insert(MessageReaction {
         reaction_id: 0,
         message_id,

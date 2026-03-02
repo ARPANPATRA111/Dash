@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Reply,
@@ -16,7 +16,7 @@ import { useChatStore } from '@/stores';
 import { Avatar } from '../ui/Avatar';
 import { formatMessageTime, formatFileSize } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
-import { deleteMessage, pinMessage, unpinMessage, addReaction } from '@/lib/spacetimedb';
+import { deleteMessage, pinMessage, unpinMessage, addReaction, removeReaction } from '@/lib/spacetimedb';
 import type { Message, User } from '@/types';
 
 interface MessageBubbleProps {
@@ -76,15 +76,21 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
   const setEditingMessage = useChatStore((state) => state.setEditingMessage);
   const messages = useChatStore((state) => state.messages);
   const users = useChatStore((state) => state.users);
+  const currentIdentity = useChatStore((state) => state.currentIdentity);
   const getMessageReactions = useChatStore((state) => state.getMessageReactions);
   const getMessageAttachments = useChatStore((state) => state.getMessageAttachments);
   
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
   
   const reactions = getMessageReactions(message.messageId);
   const attachments = getMessageAttachments(message.messageId);
+  const myReaction = currentIdentity
+    ? reactions.find((reaction) => reaction.userIdentity.isEqual(currentIdentity))
+    : undefined;
   
   const groupedReactions = useMemo(() => {
     const groups: Record<string, number> = {};
@@ -135,9 +141,81 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
   };
   
   const handleAddReaction = (emoji: string) => {
-    addReaction(message.messageId, emoji);
+    if (myReaction?.emoji === emoji) {
+      removeReaction(message.messageId, emoji);
+    } else {
+      addReaction(message.messageId, emoji);
+    }
     setShowReactions(false);
     setShowActions(false);
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPress = () => {
+    clearLongPressTimer();
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setShowActions(true);
+    }, 380);
+  };
+
+  const endLongPress = () => {
+    clearLongPressTimer();
+  };
+
+  const handleTouchEnd = () => {
+    endLongPress();
+    if (!longPressTriggeredRef.current) {
+      setShowActions(false);
+      setShowReactions(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+    };
+  }, []);
+
+  const openImageInNewWindow = (rawUrl: string, fileName: string) => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed || trimmed.startsWith('blob:')) {
+      return;
+    }
+
+    if (trimmed.startsWith('javascript:')) {
+      return;
+    }
+
+    const normalizedUrl = trimmed.startsWith('http://')
+      ? `https://${trimmed.slice('http://'.length)}`
+      : trimmed;
+
+    const popup = window.open('', '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      return;
+    }
+
+    popup.document.title = fileName;
+    popup.document.body.style.margin = '0';
+    popup.document.body.style.background = '#0b0b0f';
+    popup.document.body.style.display = 'grid';
+    popup.document.body.style.placeItems = 'center';
+
+    const image = popup.document.createElement('img');
+    image.src = normalizedUrl;
+    image.alt = fileName;
+    image.style.maxWidth = '100vw';
+    image.style.maxHeight = '100vh';
+    image.style.objectFit = 'contain';
+    popup.document.body.appendChild(image);
   };
   
   if (message.isDeleted) {
@@ -156,12 +234,15 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
         'group flex gap-2',
         isOwn ? 'justify-end' : 'justify-start'
       )}
-      onMouseEnter={() => setShowActions(true)}
+      onMouseDown={startLongPress}
+      onMouseUp={endLongPress}
       onMouseLeave={() => {
-        setShowActions(false);
-        setShowReactions(false);
+        endLongPress();
       }}
-      onTouchStart={() => setShowActions(true)}
+      onTouchStart={startLongPress}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={endLongPress}
+      onTouchMove={endLongPress}
     >
       {!isOwn && showSender && (
         <Avatar
@@ -228,7 +309,7 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
                       src={attachment.fileUrl}
                       alt={attachment.fileName}
                       className="max-w-full max-h-64 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => window.open(attachment.fileUrl, '_blank')}
+                      onClick={() => openImageInNewWindow(attachment.fileUrl, attachment.fileName)}
                       onError={() => setImageError(prev => ({ ...prev, [attachment.attachmentId.toString()]: true }))}
                     />
                   )}
@@ -313,7 +394,14 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
               <button
                 key={emoji}
                 onClick={() => handleAddReaction(emoji)}
-                className="flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 bg-ghost/10 hover:bg-ghost/20 active:bg-ghost/30 rounded-full text-xs sm:text-sm transition-colors touch-manipulation"
+                title={myReaction?.emoji === emoji ? 'Remove your reaction' : `React with ${emoji}`}
+                aria-label={myReaction?.emoji === emoji ? 'Remove your reaction' : `React with ${emoji}`}
+                className={cn(
+                  'flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-xs sm:text-sm transition-colors touch-manipulation',
+                  myReaction?.emoji === emoji
+                    ? 'bg-plasma/30 border border-plasma/50'
+                    : 'bg-ghost/10 hover:bg-ghost/20 active:bg-ghost/30'
+                )}
               >
                 <span>{emoji}</span>
                 <span className="text-[10px] sm:text-xs text-ghost/60">{count}</span>
@@ -338,6 +426,10 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
             >
               <button
                 onClick={() => setShowReactions(!showReactions)}
+                title="Open reactions"
+                aria-label="Open reactions"
+                onMouseDown={(event) => event.stopPropagation()}
+                onTouchStart={(event) => event.stopPropagation()}
                 className="p-1.5 sm:p-1.5 hover:bg-ghost/10 active:bg-ghost/20 rounded-lg transition-colors touch-manipulation"
               >
                 <SmilePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-ghost/60" />
@@ -345,6 +437,8 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
               
               <button
                 onClick={handleReply}
+                title="Reply"
+                aria-label="Reply"
                 className="p-1.5 sm:p-1.5 hover:bg-ghost/10 active:bg-ghost/20 rounded-lg transition-colors touch-manipulation"
               >
                 <Reply className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-ghost/60" />
@@ -352,6 +446,8 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
               
               <button
                 onClick={handleCopy}
+                title="Copy message"
+                aria-label="Copy message"
                 className="p-1.5 sm:p-1.5 hover:bg-ghost/10 active:bg-ghost/20 rounded-lg transition-colors touch-manipulation"
               >
                 <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-ghost/60" />
@@ -360,6 +456,8 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
               {isOwn && (
                 <button
                   onClick={handleEdit}
+                  title="Edit message"
+                  aria-label="Edit message"
                   className="p-1.5 sm:p-1.5 hover:bg-ghost/10 active:bg-ghost/20 rounded-lg transition-colors touch-manipulation"
                 >
                   <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-ghost/60" />
@@ -368,6 +466,8 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
               
               <button
                 onClick={handlePin}
+                title={message.isPinned ? 'Unpin message' : 'Pin message'}
+                aria-label={message.isPinned ? 'Unpin message' : 'Pin message'}
                 className="p-1.5 sm:p-1.5 hover:bg-ghost/10 active:bg-ghost/20 rounded-lg transition-colors touch-manipulation"
               >
                 <Pin className={cn(
@@ -379,6 +479,8 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
               {isOwn && (
                 <button
                   onClick={handleDelete}
+                  title="Delete message"
+                  aria-label="Delete message"
                   className="p-1.5 sm:p-1.5 hover:bg-red-500/20 active:bg-red-500/30 rounded-lg transition-colors touch-manipulation"
                 >
                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
@@ -403,6 +505,8 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
                 <button
                   key={emoji}
                   onClick={() => handleAddReaction(emoji)}
+                  title={myReaction?.emoji === emoji ? 'Remove your reaction' : `React with ${emoji}`}
+                  aria-label={myReaction?.emoji === emoji ? 'Remove your reaction' : `React with ${emoji}`}
                   className="w-7 h-7 sm:w-8 sm:h-8 hover:bg-ghost/10 active:bg-ghost/20 rounded-lg flex items-center justify-center text-base sm:text-lg transition-colors touch-manipulation"
                 >
                   {emoji}

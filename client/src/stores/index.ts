@@ -358,6 +358,7 @@ interface AuthStore {
   token: string | null;
   isAuthenticated: boolean;
   isRegistered: boolean;
+  needsProfileSetup: boolean;
   userEmail: string | null;
   oauthName: string | null;
   oauthAvatarUrl: string | null;
@@ -365,6 +366,7 @@ interface AuthStore {
   setToken: (token: string | null) => void;
   setIsAuthenticated: (auth: boolean) => void;
   setIsRegistered: (registered: boolean) => void;
+  setNeedsProfileSetup: (needsSetup: boolean) => void;
   setUserEmail: (email: string | null) => void;
   setOauthProfile: (profile: { name?: string | null; avatarUrl?: string | null }) => void;
   logout: () => void;
@@ -376,6 +378,7 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       isAuthenticated: false,
       isRegistered: false,
+      needsProfileSetup: false,
       userEmail: null,
       oauthName: null,
       oauthAvatarUrl: null,
@@ -383,6 +386,7 @@ export const useAuthStore = create<AuthStore>()(
       setToken: (token) => set({ token }),
       setIsAuthenticated: (auth) => set({ isAuthenticated: auth }),
       setIsRegistered: (registered) => set({ isRegistered: registered }),
+      setNeedsProfileSetup: (needsSetup) => set({ needsProfileSetup: needsSetup }),
       setUserEmail: (email) => set({ userEmail: email }),
       setOauthProfile: ({ name, avatarUrl }) => set({
         oauthName: name ?? null,
@@ -390,8 +394,11 @@ export const useAuthStore = create<AuthStore>()(
       }),
       logout: () => {
         set({
+          token: null,
           isAuthenticated: false,
           isRegistered: false,
+          needsProfileSetup: false,
+          userEmail: null,
           oauthName: null,
           oauthAvatarUrl: null,
         });

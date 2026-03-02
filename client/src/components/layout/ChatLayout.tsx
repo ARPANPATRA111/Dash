@@ -12,6 +12,7 @@ import { NewGroupModal } from '../modals/NewGroupModal';
 
 export function ChatLayout() {
   const activeConversationId = useChatStore((state) => state.activeConversationId);
+  const setActiveConversation = useChatStore((state) => state.setActiveConversation);
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const [isMobile, setIsMobile] = useState(false);
@@ -35,9 +36,20 @@ export function ChatLayout() {
       setSidebarOpen(false);
     }
   }, [activeConversationId, isMobile, setSidebarOpen]);
+
+  useEffect(() => {
+    if (isMobile && !activeConversationId) {
+      setSidebarOpen(true);
+    }
+  }, [activeConversationId, isMobile, setSidebarOpen]);
+
+  const handleBackToChats = () => {
+    setActiveConversation(null);
+    setSidebarOpen(true);
+  };
   
   return (
-    <div className="h-screen h-[100dvh] bg-ghost dark:bg-void flex overflow-hidden relative">
+    <div className="h-[100dvh] bg-ghost dark:bg-void flex overflow-hidden relative">
       <AnimatePresence>
         {isMobile && sidebarOpen && (
           <motion.div
@@ -78,7 +90,7 @@ export function ChatLayout() {
         <motion.button
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="fixed bottom-6 left-6 z-30 md:hidden p-4 bg-plasma rounded-2xl shadow-glow"
+          className="fixed top-[max(1rem,env(safe-area-inset-top))] left-4 z-30 md:hidden p-3 bg-plasma rounded-2xl shadow-glow"
           onClick={() => setSidebarOpen(true)}
         >
           <Menu className="w-6 h-6 text-white" />
@@ -98,6 +110,7 @@ export function ChatLayout() {
               <ChatArea 
                 conversationId={activeConversationId} 
                 onOpenSidebar={() => setSidebarOpen(true)}
+                onBackToChats={handleBackToChats}
                 isMobile={isMobile}
               />
             </motion.div>

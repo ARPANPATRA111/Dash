@@ -1,4 +1,4 @@
-# Dash - Real-Time Chat Application
+# Dash : Real-Time Chat Application
 
 <div align="center">
   <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React 19" />

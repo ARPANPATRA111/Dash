@@ -17,6 +17,7 @@ export function GoogleAuthScreen() {
   const setUserEmail = useAuthStore((state) => state.setUserEmail);
   const setOauthProfile = useAuthStore((state) => state.setOauthProfile);
   const setIsAuthenticated = useAuthStore((state) => state.setIsAuthenticated);
+  const setNeedsProfileSetup = useAuthStore((state) => state.setNeedsProfileSetup);
   const setToken = useAuthStore((state) => state.setToken);
   const previousEmail = useAuthStore((state) => state.userEmail);
 
@@ -82,6 +83,7 @@ export function GoogleAuthScreen() {
                 name: payload.name ?? null,
                 avatarUrl: payload.picture ?? null,
               });
+              setNeedsProfileSetup(false);
               setIsAuthenticated(true);
               authenticated = true;
 
@@ -90,6 +92,7 @@ export function GoogleAuthScreen() {
 
               try {
                 await loginWithEmail(normalizedEmail);
+                setNeedsProfileSetup(false);
               } catch (loginError) {
                 const message = loginError instanceof Error ? loginError.message : String(loginError);
                 const normalizedMessage = message.toLowerCase();
@@ -100,9 +103,12 @@ export function GoogleAuthScreen() {
                 if (!isNewUserFlow) {
                   throw loginError;
                 }
+
+                setNeedsProfileSetup(true);
               }
             } catch (oauthError) {
               if (!authenticated) {
+                setNeedsProfileSetup(false);
                 setIsAuthenticated(false);
               }
               setError(oauthError instanceof Error ? oauthError.message : 'Google sign-in failed.');
@@ -134,7 +140,7 @@ export function GoogleAuthScreen() {
     return () => {
       canceled = true;
     };
-  }, [buttonWidth, googleClientId, previousEmail, setIsAuthenticated, setOauthProfile, setToken, setUserEmail, theme]);
+  }, [buttonWidth, googleClientId, previousEmail, setIsAuthenticated, setNeedsProfileSetup, setOauthProfile, setToken, setUserEmail, theme]);
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');

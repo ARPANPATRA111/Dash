@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type ComponentType } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
@@ -6,7 +6,7 @@ import {
   Paperclip,
   X,
   Image as ImageIcon,
-  File,
+  File as FileGlyph,
   Camera,
   Loader2,
   AtSign,
@@ -14,8 +14,6 @@ import {
 import { useChatStore } from '@/stores';
 import { sendMessage, editMessage, startTyping, stopTyping, sendMessageWithAttachment } from '@/lib/spacetimedb';
 import { cn } from '@/lib/utils';
-import Picker from '@emoji-mart/react';
-import data from '@emoji-mart/data';
 
 interface MessageInputProps {
   conversationId: bigint;
@@ -44,6 +42,8 @@ export function MessageInput({ conversationId }: MessageInputProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [EmojiPickerComponent, setEmojiPickerComponent] = useState<ComponentType<any> | null>(null);
+  const [emojiData, setEmojiData] = useState<any>(null);
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +81,38 @@ export function MessageInput({ conversationId }: MessageInputProps) {
     setEditingMessage(null);
     setPendingFiles([]);
   }, [conversationId, setReplyingTo, setEditingMessage]);
+
+  useEffect(() => {
+    if (!showEmoji || (EmojiPickerComponent && emojiData)) {
+      return;
+    }
+
+    let canceled = false;
+
+    const loadEmojiAssets = async () => {
+      try {
+        const [pickerModule, dataModule] = await Promise.all([
+          import('@emoji-mart/react'),
+          import('@emoji-mart/data'),
+        ]);
+
+        if (canceled) {
+          return;
+        }
+
+        setEmojiData(dataModule.default);
+        setEmojiPickerComponent(() => pickerModule.default);
+      } catch (error) {
+        console.error('Failed to load emoji picker assets:', error);
+      }
+    };
+
+    loadEmojiAssets();
+
+    return () => {
+      canceled = true;
+    };
+  }, [EmojiPickerComponent, emojiData, showEmoji]);
   
   const handleTyping = useCallback(() => {
     if (!isTyping) {
@@ -111,7 +143,16 @@ export function MessageInput({ conversationId }: MessageInputProps) {
   
   const handleContentChange = (value: string) => {
     setContent(value);
-    handleTyping();
+
+    if (value.trim().length > 0) {
+      handleTyping();
+    } else if (isTyping) {
+      setIsTyping(false);
+      stopTyping(conversationId);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    }
     
     const cursorPos = inputRef.current?.selectionStart ?? value.length;
     const textBeforeCursor = value.slice(0, cursorPos);
@@ -151,6 +192,39 @@ export function MessageInput({ conversationId }: MessageInputProps) {
       reader.readAsDataURL(file);
     });
   };
+
+  const compressImage = async (file: File): Promise<File> => {
+    const bitmap = await createImageBitmap(file);
+    const maxDimension = 1280;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return file;
+    }
+
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.82);
+    });
+
+    if (!blob) {
+      return file;
+    }
+
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    return new window.File([blob], `${baseName}.jpg`, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+  };
   
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file') => {
     const files = e.target.files;
@@ -167,7 +241,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
       
       let preview: string | undefined;
       if (file.type.startsWith('image/')) {
-        preview = URL.createObjectURL(file);
+        preview = await fileToDataUrl(file);
       }
       
       newPendingFiles.push({ file, preview, type });
@@ -182,9 +256,6 @@ export function MessageInput({ conversationId }: MessageInputProps) {
   const removePendingFile = (index: number) => {
     setPendingFiles((prev) => {
       const newFiles = [...prev];
-      if (newFiles[index].preview) {
-        URL.revokeObjectURL(newFiles[index].preview!);
-      }
       newFiles.splice(index, 1);
       return newFiles;
     });
@@ -212,22 +283,23 @@ export function MessageInput({ conversationId }: MessageInputProps) {
       
       try {
         for (const pendingFile of pendingFiles) {
-          const dataUrl = await fileToDataUrl(pendingFile.file);
+          const uploadFile = pendingFile.type === 'image'
+            ? await compressImage(pendingFile.file)
+            : pendingFile.file;
+
+          const dataUrl = await fileToDataUrl(uploadFile);
           
           sendMessageWithAttachment(
             conversationId,
-            trimmedContent || pendingFile.file.name,
-            pendingFile.file.name,
-            pendingFile.file.type,
-            BigInt(pendingFile.file.size),
+            trimmedContent || uploadFile.name,
+            uploadFile.name,
+            uploadFile.type,
+            BigInt(uploadFile.size),
             dataUrl,
-            pendingFile.preview
+            pendingFile.type === 'image' ? dataUrl : undefined
           );
         }
-        
-        pendingFiles.forEach((f) => {
-          if (f.preview) URL.revokeObjectURL(f.preview);
-        });
+
         setPendingFiles([]);
       } catch (error) {
         console.error('Failed to upload files:', error);
@@ -305,6 +377,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
         type="file"
         accept="image/*"
         multiple
+        title="Select images"
         onChange={(e) => handleFileSelect(e, 'image')}
         className="hidden"
       />
@@ -312,6 +385,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
         ref={fileInputRef}
         type="file"
         multiple
+        title="Select files"
         onChange={(e) => handleFileSelect(e, 'file')}
         className="hidden"
       />
@@ -334,7 +408,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
                     <img src={file.preview} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center p-2">
-                      <File className="w-6 h-6 text-ghost/60 mb-1" />
+                      <FileGlyph className="w-6 h-6 text-ghost/60 mb-1" />
                       <span className="text-[8px] text-ghost/40 text-center truncate w-full">
                         {file.file.name}
                       </span>
@@ -342,6 +416,8 @@ export function MessageInput({ conversationId }: MessageInputProps) {
                   )}
                   <button
                     onClick={() => removePendingFile(index)}
+                    title="Remove attachment"
+                    aria-label="Remove attachment"
                     className="absolute top-1 right-1 p-1 bg-red-500/80 rounded-full hover:bg-red-500 transition-colors"
                   >
                     <X className="w-3 h-3 text-white" />
@@ -384,6 +460,8 @@ export function MessageInput({ conversationId }: MessageInputProps) {
                   setEditingMessage(null);
                   setContent('');
                 }}
+                title="Clear reply or edit"
+                aria-label="Clear reply or edit"
                 className="p-1.5 hover:bg-ghost/10 rounded-lg transition-colors touch-manipulation"
               >
                 <X className="w-4 h-4 text-ghost/60" />
@@ -430,6 +508,8 @@ export function MessageInput({ conversationId }: MessageInputProps) {
               setShowAttachments(!showAttachments);
               setShowEmoji(false);
             }}
+            title="Open attachments"
+            aria-label="Open attachments"
             className="p-2 sm:p-2.5 hover:bg-ghost/10 active:bg-ghost/20 rounded-xl transition-colors touch-manipulation"
           >
             <Paperclip className="w-5 h-5 text-ghost/60" />
@@ -446,6 +526,8 @@ export function MessageInput({ conversationId }: MessageInputProps) {
                 <div className="flex gap-1 sm:gap-2">
                   <button 
                     onClick={() => imageInputRef.current?.click()}
+                    title="Attach photo"
+                    aria-label="Attach photo"
                     className="flex flex-col items-center gap-1 p-2 sm:p-3 hover:bg-ghost/10 active:bg-ghost/20 rounded-xl transition-colors touch-manipulation"
                   >
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
@@ -455,15 +537,19 @@ export function MessageInput({ conversationId }: MessageInputProps) {
                   </button>
                   <button 
                     onClick={() => fileInputRef.current?.click()}
+                    title="Attach file"
+                    aria-label="Attach file"
                     className="flex flex-col items-center gap-1 p-2 sm:p-3 hover:bg-ghost/10 active:bg-ghost/20 rounded-xl transition-colors touch-manipulation"
                   >
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                      <File className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                      <FileGlyph className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                     </div>
                     <span className="text-[10px] sm:text-xs text-ghost/60">File</span>
                   </button>
                   <button 
                     onClick={() => imageInputRef.current?.click()}
+                    title="Open camera upload"
+                    aria-label="Open camera upload"
                     className="flex flex-col items-center gap-1 p-2 sm:p-3 hover:bg-ghost/10 active:bg-ghost/20 rounded-xl transition-colors touch-manipulation"
                   >
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -485,7 +571,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
             onKeyDown={handleKeyDown}
             placeholder={editingMessage ? 'Edit your message...' : 'Type a message... (use @ to mention)'}
             rows={1}
-            className="input-field w-full resize-none py-2.5 sm:py-3 pr-10 sm:pr-12 min-h-[42px] sm:min-h-[48px] max-h-[120px] sm:max-h-[150px] text-sm sm:text-base"
+            className="input-field w-full resize-none overflow-y-auto scrollbar-none py-2.5 sm:py-3 pr-10 sm:pr-12 min-h-[42px] sm:min-h-[48px] max-h-[120px] sm:max-h-[150px] text-sm sm:text-base"
           />
           
           <button
@@ -493,6 +579,8 @@ export function MessageInput({ conversationId }: MessageInputProps) {
               setShowEmoji(!showEmoji);
               setShowAttachments(false);
             }}
+            title="Open emoji picker"
+            aria-label="Open emoji picker"
             className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-ghost/10 active:bg-ghost/20 rounded-lg transition-colors touch-manipulation"
           >
             <Smile className="w-4 h-4 sm:w-5 sm:h-5 text-ghost/40" />
@@ -503,6 +591,8 @@ export function MessageInput({ conversationId }: MessageInputProps) {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleSubmit}
+          title={isUploading ? 'Uploading files' : 'Send message'}
+          aria-label={isUploading ? 'Uploading files' : 'Send message'}
           disabled={(!content.trim() && pendingFiles.length === 0) || isUploading}
           className={cn(
             'p-2.5 sm:p-3 rounded-xl transition-all touch-manipulation',
@@ -528,13 +618,19 @@ export function MessageInput({ conversationId }: MessageInputProps) {
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             className="absolute bottom-20 right-2 sm:right-4 z-50"
           >
-            <Picker
-              data={data}
-              theme="dark"
-              onEmojiSelect={handleEmojiSelect}
-              previewPosition="none"
-              perLine={7}
-            />
+            {EmojiPickerComponent && emojiData ? (
+              <EmojiPickerComponent
+                data={emojiData}
+                theme="dark"
+                onEmojiSelect={handleEmojiSelect}
+                previewPosition="none"
+                perLine={7}
+              />
+            ) : (
+              <div className="w-[320px] h-[380px] bg-graphite/95 border border-ghost/20 rounded-xl flex items-center justify-center text-sm text-ghost/60">
+                Loading emoji picker...
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

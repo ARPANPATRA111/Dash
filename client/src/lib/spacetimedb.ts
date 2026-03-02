@@ -131,6 +131,7 @@ function setupTableSubscriptions(conn: DbConnection) {
     if (currentIdentity && row.identity.toHexString() === currentIdentity.toHexString()) {
       useChatStore.getState().setCurrentUser(user);
       useAuthStore.getState().setIsRegistered(true);
+      useAuthStore.getState().setNeedsProfileSetup(false);
       console.log('[SpacetimeDB] Current user loaded:', user.username);
     }
   });
@@ -156,6 +157,7 @@ function setupTableSubscriptions(conn: DbConnection) {
     if (currentIdentity && newRow.identity.toHexString() === currentIdentity.toHexString()) {
       useChatStore.getState().setCurrentUser(user);
       useAuthStore.getState().setIsRegistered(true);
+      useAuthStore.getState().setNeedsProfileSetup(false);
       console.log('[SpacetimeDB] Current user updated:', user.username);
     }
   });
@@ -278,20 +280,32 @@ function setupTableSubscriptions(conn: DbConnection) {
       metadata: row.metadata ?? null,
       isEdited: row.editedAt !== null,
     };
-    chatStore.setMessage(message);
-    
-    const { currentIdentity } = useChatStore.getState();
+    const chatState = useChatStore.getState();
+    chatState.setMessage(message);
+
+    const { currentIdentity, participants, users } = chatState;
     const { soundEnabled, notificationsEnabled } = useUIStore.getState();
     
     const myIdentityHex = currentIdentity?.toHexString();
     if (myIdentityHex && row.senderIdentity.toHexString() !== myIdentityHex && row.messageType !== 'system') {
+      const isParticipantInConversation = Array.from(participants.values()).some(
+        (participant) =>
+          participant.userIdentity.toHexString() === myIdentityHex &&
+          participant.conversationId.toString() === row.conversationId.toString() &&
+          !participant.isArchived
+      );
+
+      if (!isParticipantInConversation) {
+        return;
+      }
+
       getNotificationsModule().then(({ soundManager, showNotification }) => {
         if (soundEnabled) {
           soundManager.playMessageReceived();
         }
 
         if (notificationsEnabled) {
-          const sender = chatStore.users.get(row.senderIdentity.toHexString());
+          const sender = users.get(row.senderIdentity.toHexString());
           const senderName = sender?.displayName || 'Someone';
           const content = row.content.length > 100 ? row.content.slice(0, 100) + '...' : row.content;
 

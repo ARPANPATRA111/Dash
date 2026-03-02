@@ -18,10 +18,11 @@ import { formatLastSeen } from '@/utils/formatters';
 interface ChatAreaProps {
   conversationId: bigint;
   onOpenSidebar?: () => void;
+  onBackToChats?: () => void;
   isMobile?: boolean;
 }
 
-export function ChatArea({ conversationId, onOpenSidebar, isMobile }: ChatAreaProps) {
+export function ChatArea({ conversationId, onOpenSidebar, onBackToChats, isMobile }: ChatAreaProps) {
   const conversations = useChatStore((state) => state.conversations);
   const participants = useChatStore((state) => state.participants);
   const users = useChatStore((state) => state.users);
@@ -136,7 +137,9 @@ export function ChatArea({ conversationId, onOpenSidebar, isMobile }: ChatAreaPr
           <div className="flex items-center gap-3">
             {isMobile && (
               <button
-                onClick={onOpenSidebar}
+                onClick={onBackToChats ?? onOpenSidebar}
+                title="Back to chats"
+                aria-label="Back to chats"
                 className="p-2 hover:bg-ghost/10 rounded-xl transition-colors -ml-2"
               >
                 <ChevronLeft className="w-6 h-6 text-graphite dark:text-ghost" />
@@ -172,17 +175,19 @@ export function ChatArea({ conversationId, onOpenSidebar, isMobile }: ChatAreaPr
           </div>
 
           <div className="flex items-center gap-1">
-            <button className="p-2 hover:bg-ghost/10 rounded-xl transition-colors hidden md:block">
+            <button title="Start voice call" aria-label="Start voice call" className="p-2 hover:bg-ghost/10 rounded-xl transition-colors hidden md:block">
               <Phone className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
             </button>
-            <button className="p-2 hover:bg-ghost/10 rounded-xl transition-colors hidden md:block">
+            <button title="Start video call" aria-label="Start video call" className="p-2 hover:bg-ghost/10 rounded-xl transition-colors hidden md:block">
               <Video className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
             </button>
-            <button className="p-2 hover:bg-ghost/10 rounded-xl transition-colors hidden md:block">
+            <button title="Search messages" aria-label="Search messages" className="p-2 hover:bg-ghost/10 rounded-xl transition-colors hidden md:block">
               <Search className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
             </button>
             <button
               onClick={() => setShowDetails(!showDetails)}
+              title={showDetails ? 'Close chat details' : 'Open chat details'}
+              aria-label={showDetails ? 'Close chat details' : 'Open chat details'}
               className={`p-2 rounded-xl transition-colors ${
                 showDetails ? 'bg-plasma/20 text-plasma' : 'hover:bg-ghost/10 text-graphite/60 dark:text-ghost/60'
               }`}
