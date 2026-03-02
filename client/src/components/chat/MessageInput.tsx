@@ -371,7 +371,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
   }, [content]);
   
   return (
-    <div className="border-t border-ghost/10 p-2 sm:p-4 bg-gradient-to-t from-void to-transparent relative">
+    <div className="border-t border-ghost/10 p-2 sm:p-4 bg-gradient-to-t from-white/95 to-white/70 dark:from-void dark:to-transparent relative">
       <input
         ref={imageInputRef}
         type="file"
@@ -569,6 +569,11 @@ export function MessageInput({ conversationId }: MessageInputProps) {
             value={content}
             onChange={(e) => handleContentChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => {
+              window.setTimeout(() => {
+                inputRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              }, 120);
+            }}
             placeholder={editingMessage ? 'Edit your message...' : 'Type a message... (use @ to mention)'}
             rows={1}
             className="input-field w-full resize-none overflow-y-auto scrollbar-none py-2.5 sm:py-3 pr-10 sm:pr-12 min-h-[42px] sm:min-h-[48px] max-h-[120px] sm:max-h-[150px] text-sm sm:text-base"

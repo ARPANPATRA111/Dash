@@ -99,7 +99,7 @@ export function MessageList({ conversationId }: MessageListProps) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto scrollbar-thin px-4 py-4"
+        className="h-full overflow-y-auto scrollbar-thin px-3 sm:px-4 py-3 sm:py-4 bg-gradient-to-b from-ghost/30 to-ghost/10 dark:from-void/20 dark:to-void/40"
       >
         {groupedMessages.map((group) => (
           <div key={group.date.toISOString()}>

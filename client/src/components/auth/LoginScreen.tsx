@@ -7,11 +7,12 @@ import { cn } from '@/lib/utils';
 
 interface LoginScreenProps {
   onSwitchToSignup: () => void;
+  onSwitchToGoogle?: () => void;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function LoginScreen({ onSwitchToSignup }: LoginScreenProps) {
+export function LoginScreen({ onSwitchToSignup, onSwitchToGoogle }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -267,6 +268,15 @@ export function LoginScreen({ onSwitchToSignup }: LoginScreenProps) {
                   <Sparkles className="w-5 h-5" />
                   <span>Create an account</span>
                 </button>
+
+                {onSwitchToGoogle && (
+                  <button
+                    onClick={onSwitchToGoogle}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-2xl border border-ghost-400/60 dark:border-void-50/60 text-graphite/80 dark:text-ghost/80 font-semibold transition-all duration-300 hover:bg-ghost/20 dark:hover:bg-ghost/10"
+                  >
+                    <span>Continue with Google</span>
+                  </button>
+                )}
               </div>
             </div>
             

@@ -16,6 +16,8 @@ export function ConversationItem({ conversation, onSelect }: ConversationItemPro
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const currentIdentity = useChatStore((state) => state.currentIdentity);
+  const currentUser = useChatStore((state) => state.currentUser);
+  const effectiveIdentity = currentIdentity ?? currentUser?.identity ?? null;
   const participants = useChatStore((state) => state.participants);
   const users = useChatStore((state) => state.users);
   const messages = useChatStore((state) => state.messages);
@@ -30,11 +32,11 @@ export function ConversationItem({ conversation, onSelect }: ConversationItemPro
       .filter((p) => p.conversationId.toString() === conversation.conversationId.toString());
     
     const currentParticipant = convParticipants.find(
-      (p) => currentIdentity && p.userIdentity.isEqual(currentIdentity)
+      (p) => effectiveIdentity && p.userIdentity.isEqual(effectiveIdentity)
     );
 
     const otherParticipants = convParticipants.filter(
-      (p) => currentIdentity && !p.userIdentity.isEqual(currentIdentity)
+      (p) => effectiveIdentity && !p.userIdentity.isEqual(effectiveIdentity)
     );
 
     const otherUsers = otherParticipants
@@ -46,7 +48,7 @@ export function ConversationItem({ conversation, onSelect }: ConversationItemPro
       otherParticipants,
       otherUsers,
     };
-  }, [participants, users, currentIdentity, conversation.conversationId]);
+  }, [participants, users, effectiveIdentity, conversation.conversationId]);
 
   const displayInfo = useMemo(() => {
     if (conversation.isGroup) {
@@ -103,7 +105,7 @@ export function ConversationItem({ conversation, onSelect }: ConversationItemPro
     if (lastMessage.isDeleted) return 'Message deleted';
     
     const sender = users.get(lastMessage.senderIdentity.toHexString());
-    const isMe = currentIdentity && lastMessage.senderIdentity.isEqual(currentIdentity);
+    const isMe = effectiveIdentity && lastMessage.senderIdentity.isEqual(effectiveIdentity);
     
     let preview = lastMessage.content;
     
@@ -119,7 +121,7 @@ export function ConversationItem({ conversation, onSelect }: ConversationItemPro
     }
     
     return preview;
-  }, [lastMessage, users, currentIdentity, conversation.isGroup]);
+  }, [lastMessage, users, effectiveIdentity, conversation.isGroup]);
   
   return (
     <motion.button
@@ -130,10 +132,10 @@ export function ConversationItem({ conversation, onSelect }: ConversationItemPro
         onSelect?.();
       }}
       className={cn(
-        'w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors',
+        'w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-colors border',
         isActive
-          ? 'bg-plasma/15 border border-plasma/30'
-          : 'hover:bg-ghost/5 border border-transparent'
+          ? 'bg-plasma/15 border-plasma/35 shadow-sm'
+          : 'bg-white/45 dark:bg-ghost/5 border-transparent hover:bg-ghost/10 dark:hover:bg-ghost/10'
       )}
     >
       <div className="flex-shrink-0">
@@ -158,7 +160,7 @@ export function ConversationItem({ conversation, onSelect }: ConversationItemPro
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className={cn(
-              'font-medium truncate',
+              'font-semibold truncate',
               unreadCount > 0 ? 'text-graphite dark:text-ghost' : 'text-graphite/80 dark:text-ghost/80'
             )}>
               {displayInfo.name}

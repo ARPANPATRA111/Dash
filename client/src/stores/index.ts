@@ -251,11 +251,12 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   
   getUnreadCount: (conversationId) => {
     const state = get();
-    if (!state.currentIdentity) return 0;
+    const effectiveIdentity = state.currentIdentity ?? state.currentUser?.identity;
+    if (!effectiveIdentity) return 0;
     
     const participant = Array.from(state.participants.values())
       .find((p) => p.conversationId === conversationId && 
-                   p.userIdentity.isEqual(state.currentIdentity!));
+                   p.userIdentity.isEqual(effectiveIdentity));
     
     if (!participant || !participant.lastReadMessageId) {
       return state.getConversationMessages(conversationId).length;

@@ -30,20 +30,22 @@ export function Sidebar({
   onClose,
 }: SidebarProps) {
   const currentUser = useChatStore((state) => state.currentUser);
+  const users = useChatStore((state) => state.users);
   const conversations = useChatStore((state) => state.conversations);
   const participants = useChatStore((state) => state.participants);
   const currentIdentity = useChatStore((state) => state.currentIdentity);
+  const effectiveIdentity = currentIdentity ?? currentUser?.identity ?? null;
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'direct' | 'group'>('all');
   
   const userConversations = useMemo(() => {
-    if (!currentIdentity) return [];
+    if (!effectiveIdentity) return [];
     
     const participantConvIds = new Set(
       Array.from(participants.values())
-        .filter((p) => p.userIdentity.isEqual(currentIdentity))
+        .filter((p) => p.userIdentity.isEqual(effectiveIdentity))
         .map((p) => p.conversationId.toString())
     );
     
@@ -54,7 +56,7 @@ export function Sidebar({
         const bTime = b.lastMessageAt?.toDate().getTime() ?? 0;
         return bTime - aTime;
       });
-  }, [conversations, participants, currentIdentity]);
+  }, [conversations, participants, effectiveIdentity]);
   
   const filteredConversations = useMemo(() => {
     let filtered = userConversations;
@@ -68,33 +70,50 @@ export function Sidebar({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((c) => {
-        if (c.name) return c.name.toLowerCase().includes(query);
-        return false;
+        if (c.name && c.name.toLowerCase().includes(query)) {
+          return true;
+        }
+
+        const convParticipants = Array.from(participants.values()).filter(
+          (p) => p.conversationId.toString() === c.conversationId.toString()
+        );
+
+        return convParticipants.some((participant) => {
+          const user = users.get(participant.userIdentity.toHexString());
+          if (!user) {
+            return false;
+          }
+
+          return (
+            user.username.toLowerCase().includes(query) ||
+            (user.displayName?.toLowerCase().includes(query) ?? false)
+          );
+        });
       });
     }
     
     const archived = filtered.filter((c) => {
       const participant = Array.from(participants.values())
         .find((p) => p.conversationId === c.conversationId && 
-                     currentIdentity && 
-                     p.userIdentity.isEqual(currentIdentity));
+                     effectiveIdentity && 
+                     p.userIdentity.isEqual(effectiveIdentity));
       return participant?.isArchived;
     });
     
     const active = filtered.filter((c) => {
       const participant = Array.from(participants.values())
         .find((p) => p.conversationId === c.conversationId && 
-                     currentIdentity && 
-                     p.userIdentity.isEqual(currentIdentity));
+                     effectiveIdentity && 
+                     p.userIdentity.isEqual(effectiveIdentity));
       return !participant?.isArchived;
     });
     
     return { active, archived };
-  }, [userConversations, filterType, searchQuery, participants, currentIdentity]);
+  }, [userConversations, filterType, searchQuery, participants, effectiveIdentity]);
   
   return (
-    <div className="h-screen h-[100dvh] w-[85vw] max-w-[320px] md:w-80 bg-white dark:bg-gradient-to-b dark:from-graphite dark:to-void border-r border-graphite/10 dark:border-ghost/10 flex flex-col">
-      <div className="p-4 border-b border-ghost/10">
+    <div className="h-[100dvh] w-full md:w-80 bg-white dark:bg-gradient-to-b dark:from-graphite dark:to-void border-r border-graphite/10 dark:border-ghost/10 flex flex-col">
+      <div className="px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 border-b border-ghost/10 bg-white/85 dark:bg-graphite/65 backdrop-blur-xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-plasma to-plasma/60 flex items-center justify-center shadow-glow">
@@ -109,6 +128,8 @@ export function Sidebar({
           <div className="flex items-center gap-1">
             <button
               onClick={onOpenSettings}
+              title="Open settings"
+              aria-label="Open settings"
               className="p-2 hover:bg-ghost/10 rounded-xl transition-colors"
             >
               <Settings className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
@@ -117,6 +138,8 @@ export function Sidebar({
             {onClose && (
               <button
                 onClick={onClose}
+                title="Close chat list"
+                aria-label="Close chat list"
                 className="p-2 hover:bg-ghost/10 rounded-xl transition-colors md:hidden"
               >
                 <X className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
@@ -127,7 +150,7 @@ export function Sidebar({
 
         <button
           onClick={onOpenProfile}
-          className="w-full flex items-center gap-3 hover:bg-ghost/5 rounded-2xl p-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full flex items-center gap-3 hover:bg-ghost/10 rounded-2xl p-3 transition-all hover:scale-[1.01] active:scale-[0.99]"
         >
           <Avatar
             src={currentUser?.avatarUrl ?? undefined}
@@ -177,7 +200,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="p-3 border-b border-ghost/10 flex gap-2">
+      <div className="p-3 border-b border-ghost/10 flex gap-2 bg-white/70 dark:bg-graphite/45 backdrop-blur-sm">
         <button
           onClick={onNewConversation}
           className="flex-1 flex items-center justify-center gap-2 py-3 px-3 bg-plasma hover:bg-plasma/90 text-white rounded-xl text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-glow"

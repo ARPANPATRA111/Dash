@@ -23,6 +23,8 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
   const users = useChatStore((state) => state.users);
   const presences = useChatStore((state) => state.presences);
   const currentIdentity = useChatStore((state) => state.currentIdentity);
+  const currentUser = useChatStore((state) => state.currentUser);
+  const effectiveIdentity = currentIdentity ?? currentUser?.identity ?? null;
   
   const [step, setStep] = useState<'members' | 'details'>('members');
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,15 +43,15 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
   };
   
   const availableUsers = useMemo(() => {
-    if (!currentIdentity) return [];
+    if (!effectiveIdentity) return [];
     
     return Array.from(users.values())
-      .filter((user) => !user.identity.isEqual(currentIdentity))
+      .filter((user) => !user.identity.isEqual(effectiveIdentity))
       .map((user) => ({
         user,
         presence: presences.get(user.identity.toHexString()),
       }));
-  }, [users, presences, currentIdentity]);
+  }, [users, presences, effectiveIdentity]);
   
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) return availableUsers;
@@ -130,20 +132,24 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
                   {step === 'details' && (
                     <button
                       onClick={handleBack}
+                      title="Back to member selection"
+                      aria-label="Back to member selection"
                       className="p-2 hover:bg-ghost/10 rounded-xl transition-colors"
                     >
-                      <ArrowLeft className="w-5 h-5 text-ghost/60" />
+                      <ArrowLeft className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                     </button>
                   )}
-                  <h2 className="text-xl font-heading font-bold text-ghost">
+                  <h2 className="text-xl font-heading font-bold text-graphite dark:text-ghost">
                     {step === 'members' ? 'Select Members' : 'Group Details'}
                   </h2>
                 </div>
                 <button
                   onClick={handleClose}
+                  title="Close new group"
+                  aria-label="Close new group"
                   className="p-2 hover:bg-ghost/10 rounded-xl transition-colors"
                 >
-                  <X className="w-5 h-5 text-ghost/60" />
+                  <X className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                 </button>
               </div>
               
@@ -202,7 +208,7 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
                   {filteredUsers.length === 0 ? (
                     <div className="p-8 text-center">
                       <Users className="w-12 h-12 text-ghost/20 mx-auto mb-3" />
-                      <p className="text-ghost/50">No users found</p>
+                      <p className="text-graphite/55 dark:text-ghost/50">No users found</p>
                     </div>
                   ) : (
                     filteredUsers.map(({ user, presence }) => {
@@ -228,8 +234,8 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
                             status={isOnline ? 'online' : 'offline'}
                           />
                           <div className="flex-1 text-left">
-                            <p className="font-medium text-ghost">{user.displayName ?? user.username}</p>
-                            <p className="text-sm text-ghost/50">@{user.username}</p>
+                            <p className="font-medium text-graphite dark:text-ghost">{user.displayName ?? user.username}</p>
+                            <p className="text-sm text-graphite/55 dark:text-ghost/50">@{user.username}</p>
                           </div>
                           <div className={cn(
                             'w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors',
@@ -254,7 +260,7 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
                     <span>Next</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
-                  <p className="text-xs text-ghost/40 text-center mt-2">
+                  <p className="text-xs text-graphite/45 dark:text-ghost/40 text-center mt-2">
                     {selectedMembers.size} member{selectedMembers.size !== 1 ? 's' : ''} selected
                   </p>
                 </div>
@@ -277,14 +283,14 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
                           <Users className="w-10 h-10 text-plasma" />
                         </div>
                       )}
-                      <button className="absolute bottom-0 right-0 p-2 bg-plasma rounded-full">
+                      <button title="Change group avatar" aria-label="Change group avatar" className="absolute bottom-0 right-0 p-2 bg-plasma rounded-full">
                         <ImageIcon className="w-4 h-4 text-white" />
                       </button>
                     </div>
                   </div>
                   
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-ghost/80 mb-2">
+                    <label className="block text-sm font-medium text-graphite/80 dark:text-ghost/80 mb-2">
                       Group Name *
                     </label>
                     <input
@@ -299,8 +305,8 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
                   </div>
                   
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-ghost/80 mb-2">
-                      Avatar URL <span className="text-ghost/40">(optional)</span>
+                    <label className="block text-sm font-medium text-graphite/80 dark:text-ghost/80 mb-2">
+                      Avatar URL <span className="text-graphite/45 dark:text-ghost/40">(optional)</span>
                     </label>
                     <input
                       type="url"
@@ -312,7 +318,7 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-ghost/80 mb-2">
+                    <label className="block text-sm font-medium text-graphite/80 dark:text-ghost/80 mb-2">
                       Members ({selectedMemberInfo.length + 1})
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -326,12 +332,12 @@ export function NewGroupModal({ open, onClose }: NewGroupModalProps) {
                             name={user?.displayName ?? 'User'}
                             size="xs"
                           />
-                          <span className="text-sm text-ghost">{user?.displayName}</span>
+                          <span className="text-sm text-graphite dark:text-ghost">{user?.displayName}</span>
                         </div>
                       ))}
                       {selectedMemberInfo.length > 5 && (
                         <div className="flex items-center px-2 py-1 bg-ghost/10 rounded-full">
-                          <span className="text-sm text-ghost/60">
+                          <span className="text-sm text-graphite/60 dark:text-ghost/60">
                             +{selectedMemberInfo.length - 5} more
                           </span>
                         </div>

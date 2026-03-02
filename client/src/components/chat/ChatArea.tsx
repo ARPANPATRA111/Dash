@@ -20,14 +20,17 @@ interface ChatAreaProps {
   onOpenSidebar?: () => void;
   onBackToChats?: () => void;
   isMobile?: boolean;
+  sidebarOpen?: boolean;
 }
 
-export function ChatArea({ conversationId, onOpenSidebar, onBackToChats, isMobile }: ChatAreaProps) {
+export function ChatArea({ conversationId, onOpenSidebar, onBackToChats, isMobile, sidebarOpen }: ChatAreaProps) {
   const conversations = useChatStore((state) => state.conversations);
   const participants = useChatStore((state) => state.participants);
   const users = useChatStore((state) => state.users);
   const presences = useChatStore((state) => state.presences);
   const currentIdentity = useChatStore((state) => state.currentIdentity);
+  const currentUser = useChatStore((state) => state.currentUser);
+  const effectiveIdentity = currentIdentity ?? currentUser?.identity ?? null;
   const typingIndicators = useChatStore((state) => state.typingIndicators);
   
   const [showDetails, setShowDetails] = useState(false);
@@ -41,7 +44,7 @@ export function ChatArea({ conversationId, onOpenSidebar, onBackToChats, isMobil
       .filter((p) => p.conversationId.toString() === conversationId.toString());
     
     const otherParticipants = convParticipants.filter(
-      (p) => currentIdentity && !p.userIdentity.isEqual(currentIdentity)
+      (p) => effectiveIdentity && !p.userIdentity.isEqual(effectiveIdentity)
     );
     
     const otherUsers = otherParticipants
@@ -53,7 +56,7 @@ export function ChatArea({ conversationId, onOpenSidebar, onBackToChats, isMobil
       otherParticipants,
       otherUsers,
     };
-  }, [conversation, participants, users, currentIdentity, conversationId]);
+  }, [conversation, participants, users, effectiveIdentity, conversationId]);
 
   const displayInfo = useMemo(() => {
     if (!conversation || !participantInfo) {
@@ -89,18 +92,18 @@ export function ChatArea({ conversationId, onOpenSidebar, onBackToChats, isMobil
   }, [conversation, participantInfo, presences]);
 
   const typingUsers = useMemo(() => {
-    if (!currentIdentity) return [];
+    if (!effectiveIdentity) return [];
     
     return Array.from(typingIndicators.values())
       .filter((t) => 
         t.conversationId.toString() === conversationId.toString() &&
-        !t.userIdentity.isEqual(currentIdentity)
+        !t.userIdentity.isEqual(effectiveIdentity)
       )
       .map((t) => {
         const user = users.get(t.userIdentity.toHexString());
         return user?.displayName ?? 'Someone';
       });
-  }, [typingIndicators, conversationId, currentIdentity, users]);
+  }, [typingIndicators, conversationId, effectiveIdentity, users]);
 
   const subtitle = useMemo(() => {
     if (typingUsers.length > 0) {
@@ -131,11 +134,11 @@ export function ChatArea({ conversationId, onOpenSidebar, onBackToChats, isMobil
   }
   
   return (
-    <div className="h-full flex">
+    <div className="h-full flex bg-ghost/50 dark:bg-void/55">
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="h-16 border-b border-ghost/10 flex items-center justify-between px-4 bg-white/80 dark:bg-graphite/50 backdrop-blur-sm">
+        <div className="h-16 border-b border-ghost/10 flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] bg-white/90 dark:bg-graphite/75 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            {isMobile && (
+            {(isMobile || !sidebarOpen) && (
               <button
                 onClick={onBackToChats ?? onOpenSidebar}
                 title="Back to chats"
@@ -201,7 +204,9 @@ export function ChatArea({ conversationId, onOpenSidebar, onBackToChats, isMobil
           <MessageList conversationId={conversationId} />
         </div>
 
-        <MessageInput conversationId={conversationId} />
+        <div className="bg-white/90 dark:bg-graphite/75 backdrop-blur-xl border-t border-ghost/10 pb-[calc(env(safe-area-inset-bottom)+var(--keyboard-inset,0px))]">
+          <MessageInput conversationId={conversationId} />
+        </div>
       </div>
 
       <AnimatePresence>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu } from 'lucide-react';
 import { useChatStore, useUIStore } from '@/stores';
 import { Sidebar } from './Sidebar';
 import { ChatArea } from '../chat/ChatArea';
@@ -13,9 +12,9 @@ import { NewGroupModal } from '../modals/NewGroupModal';
 export function ChatLayout() {
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
-  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const [isMobile, setIsMobile] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
 
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -32,72 +31,124 @@ export function ChatLayout() {
   }, []);
 
   useEffect(() => {
-    if (isMobile && activeConversationId) {
-      setSidebarOpen(false);
-    }
-  }, [activeConversationId, isMobile, setSidebarOpen]);
-
-  useEffect(() => {
-    if (isMobile && !activeConversationId) {
+    if (!isMobile) {
       setSidebarOpen(true);
     }
-  }, [activeConversationId, isMobile, setSidebarOpen]);
+  }, [isMobile, setSidebarOpen]);
+
+  useEffect(() => {
+    if (!isMobile || !window.visualViewport) {
+      setKeyboardInset(0);
+      return;
+    }
+
+    const updateInset = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) {
+        setKeyboardInset(0);
+        return;
+      }
+
+      const rawInset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardInset(rawInset > 80 ? Math.min(rawInset, 320) : 0);
+    };
+
+    updateInset();
+    window.visualViewport.addEventListener('resize', updateInset);
+    window.visualViewport.addEventListener('scroll', updateInset);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateInset);
+      window.visualViewport?.removeEventListener('scroll', updateInset);
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--keyboard-inset', `${keyboardInset}px`);
+    return () => {
+      document.documentElement.style.setProperty('--keyboard-inset', '0px');
+    };
+  }, [keyboardInset]);
 
   const handleBackToChats = () => {
     setActiveConversation(null);
     setSidebarOpen(true);
   };
+
+  if (isMobile) {
+    return (
+      <div className="h-[100dvh] bg-ghost dark:bg-void overflow-hidden relative">
+        <AnimatePresence mode="wait">
+          {activeConversationId ? (
+            <motion.div
+              key={activeConversationId.toString()}
+              initial={{ x: '100%', opacity: 0.6 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0.6 }}
+              transition={{ type: 'spring', damping: 32, stiffness: 420, mass: 0.7 }}
+              className="h-full"
+            >
+              <ChatArea
+                conversationId={activeConversationId}
+                onBackToChats={handleBackToChats}
+                isMobile
+                sidebarOpen={false}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="mobile-list"
+              initial={{ x: '-8%', opacity: 0.6 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '-8%', opacity: 0.6 }}
+              transition={{ type: 'spring', damping: 32, stiffness: 420, mass: 0.7 }}
+              className="h-full"
+            >
+              <Sidebar
+                onOpenProfile={() => setProfileModalOpen(true)}
+                onOpenSettings={() => setSettingsModalOpen(true)}
+                onNewConversation={() => setNewConversationModalOpen(true)}
+                onNewGroup={() => setNewGroupModalOpen(true)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <UserProfileModal
+          open={profileModalOpen}
+          onClose={() => setProfileModalOpen(false)}
+        />
+
+        <SettingsModal
+          open={settingsModalOpen}
+          onClose={() => setSettingsModalOpen(false)}
+        />
+
+        <NewConversationModal
+          open={newConversationModalOpen}
+          onClose={() => setNewConversationModalOpen(false)}
+        />
+
+        <NewGroupModal
+          open={newGroupModalOpen}
+          onClose={() => setNewGroupModalOpen(false)}
+        />
+      </div>
+    );
+  }
   
   return (
     <div className="h-[100dvh] bg-ghost dark:bg-void flex overflow-hidden relative">
-      <AnimatePresence>
-        {isMobile && sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
+      <div className="w-80 flex-shrink-0 border-r border-ghost/10">
+        <Sidebar
+          onOpenProfile={() => setProfileModalOpen(true)}
+          onOpenSettings={() => setSettingsModalOpen(true)}
+          onNewConversation={() => setNewConversationModalOpen(true)}
+          onNewGroup={() => setNewGroupModalOpen(true)}
+        />
+      </div>
 
-      <AnimatePresence mode="wait">
-        {sidebarOpen && (
-          <motion.div
-            initial={{ x: -320, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -320, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`
-              flex-shrink-0 z-50
-              ${isMobile ? 'fixed inset-y-0 left-0' : 'relative'}
-            `}
-          >
-            <Sidebar
-              onOpenProfile={() => setProfileModalOpen(true)}
-              onOpenSettings={() => setSettingsModalOpen(true)}
-              onNewConversation={() => setNewConversationModalOpen(true)}
-              onNewGroup={() => setNewGroupModalOpen(true)}
-              onClose={() => isMobile && setSidebarOpen(false)}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {!sidebarOpen && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="fixed top-[max(1rem,env(safe-area-inset-top))] left-4 z-30 md:hidden p-3 bg-plasma rounded-2xl shadow-glow"
-          onClick={() => setSidebarOpen(true)}
-        >
-          <Menu className="w-6 h-6 text-white" />
-        </motion.button>
-      )}
-
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col bg-white/40 dark:bg-graphite/35">
         <AnimatePresence mode="wait">
           {activeConversationId ? (
             <motion.div
@@ -109,9 +160,9 @@ export function ChatLayout() {
             >
               <ChatArea 
                 conversationId={activeConversationId} 
-                onOpenSidebar={() => setSidebarOpen(true)}
                 onBackToChats={handleBackToChats}
-                isMobile={isMobile}
+                isMobile={false}
+                sidebarOpen={true}
               />
             </motion.div>
           ) : (
@@ -125,8 +176,7 @@ export function ChatLayout() {
               <EmptyState
                 onNewConversation={() => setNewConversationModalOpen(true)}
                 onNewGroup={() => setNewGroupModalOpen(true)}
-                onOpenSidebar={() => setSidebarOpen(true)}
-                isMobile={isMobile}
+                isMobile={false}
               />
             </motion.div>
           )}

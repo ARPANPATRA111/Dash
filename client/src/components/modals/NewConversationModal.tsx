@@ -14,6 +14,8 @@ export function NewConversationModal({ open, onClose }: NewConversationModalProp
   const users = useChatStore((state) => state.users);
   const presences = useChatStore((state) => state.presences);
   const currentIdentity = useChatStore((state) => state.currentIdentity);
+  const currentUser = useChatStore((state) => state.currentUser);
+  const effectiveIdentity = currentIdentity ?? currentUser?.identity ?? null;
   const conversations = useChatStore((state) => state.conversations);
   const participants = useChatStore((state) => state.participants);
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
@@ -22,15 +24,15 @@ export function NewConversationModal({ open, onClose }: NewConversationModalProp
   const [isCreating, setIsCreating] = useState(false);
   
   const availableUsers = useMemo(() => {
-    if (!currentIdentity) return [];
+    if (!effectiveIdentity) return [];
     
     return Array.from(users.values())
-      .filter((user) => !user.identity.isEqual(currentIdentity))
+      .filter((user) => !user.identity.isEqual(effectiveIdentity))
       .map((user) => ({
         user,
         presence: presences.get(user.identity.toHexString()),
       }));
-  }, [users, presences, currentIdentity]);
+  }, [users, presences, effectiveIdentity]);
   
   const filteredUsers = useMemo(() => {
     if (!searchQuery.trim()) return availableUsers;
@@ -44,7 +46,7 @@ export function NewConversationModal({ open, onClose }: NewConversationModalProp
   }, [availableUsers, searchQuery]);
   
   const getExistingConversation = (userIdentityHex: string) => {
-    if (!currentIdentity) return null;
+    if (!effectiveIdentity) return null;
     
     for (const conversation of conversations.values()) {
       if (conversation.isGroup) continue;
@@ -53,7 +55,7 @@ export function NewConversationModal({ open, onClose }: NewConversationModalProp
         .filter((p) => p.conversationId.toString() === conversation.conversationId.toString());
       
       const hasCurrentUser = convParticipants.some(
-        (p) => p.userIdentity.isEqual(currentIdentity)
+        (p) => p.userIdentity.isEqual(effectiveIdentity)
       );
       const hasOtherUser = convParticipants.some(
         (p) => p.userIdentity.toHexString() === userIdentityHex
@@ -108,12 +110,14 @@ export function NewConversationModal({ open, onClose }: NewConversationModalProp
           <div className="card overflow-hidden">
             <div className="p-4 border-b border-ghost/10">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-heading font-bold text-ghost">New Chat</h2>
+                <h2 className="text-xl font-heading font-bold text-graphite dark:text-ghost">New Chat</h2>
                 <button
                   onClick={onClose}
+                  title="Close new chat"
+                  aria-label="Close new chat"
                   className="p-2 hover:bg-ghost/10 rounded-xl transition-colors"
                 >
-                  <X className="w-5 h-5 text-ghost/60" />
+                  <X className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                 </button>
               </div>
               
@@ -134,10 +138,10 @@ export function NewConversationModal({ open, onClose }: NewConversationModalProp
               {filteredUsers.length === 0 ? (
                 <div className="p-8 text-center">
                   <MessageSquare className="w-12 h-12 text-ghost/20 mx-auto mb-3" />
-                  <p className="text-ghost/50">
+                  <p className="text-graphite/55 dark:text-ghost/50">
                     {searchQuery ? 'No users found' : 'No users available'}
                   </p>
-                  <p className="text-xs text-ghost/30 mt-1">
+                  <p className="text-xs text-graphite/40 dark:text-ghost/30 mt-1">
                     Try searching for someone by name or username
                   </p>
                 </div>
@@ -161,11 +165,11 @@ export function NewConversationModal({ open, onClose }: NewConversationModalProp
                           status={isOnline ? 'online' : 'offline'}
                         />
                         <div className="flex-1 text-left">
-                          <p className="font-medium text-ghost">{user.displayName ?? user.username}</p>
-                          <p className="text-sm text-ghost/50">@{user.username}</p>
+                          <p className="font-medium text-graphite dark:text-ghost">{user.displayName ?? user.username}</p>
+                          <p className="text-sm text-graphite/55 dark:text-ghost/50">@{user.username}</p>
                         </div>
                         {getExistingConversation(user.identity.toHexString()) && (
-                          <span className="text-xs text-ghost/40 bg-ghost/10 px-2 py-1 rounded-full">
+                          <span className="text-xs text-graphite/50 dark:text-ghost/40 bg-ghost/15 dark:bg-ghost/10 px-2 py-1 rounded-full">
                             Existing chat
                           </span>
                         )}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Moon, Sun } from 'lucide-react';
+import { Lock, Moon, Sun, Shield, Zap, MessageCircle, Sparkles } from 'lucide-react';
 import { connectToSpacetimeDB, disconnectFromSpacetimeDB, loginWithEmail } from '@/lib/spacetimedb';
 import { loadGoogleIdentityScript, parseGoogleIdTokenPayload } from '@/lib/google-oauth';
 import { useAuthStore, useUIStore } from '@/stores';
+import { cn } from '@/lib/utils';
 
 export function GoogleAuthScreen() {
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,17 @@ export function GoogleAuthScreen() {
     const init = async () => {
       try {
         setError(null);
+
+        const allowedOrigins = String(import.meta.env.VITE_GOOGLE_ALLOWED_ORIGINS ?? '')
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean);
+        if (allowedOrigins.length > 0 && !allowedOrigins.includes(window.location.origin)) {
+          setError(`Google OAuth is not enabled for this origin (${window.location.origin}). Add it to Google Cloud Console authorized origins and VITE_GOOGLE_ALLOWED_ORIGINS.`);
+          setIsScriptReady(true);
+          return;
+        }
+
         await loadGoogleIdentityScript();
         if (canceled) return;
 
@@ -147,7 +159,12 @@ export function GoogleAuthScreen() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-ghost dark:bg-void flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="min-h-[100dvh] bg-ghost dark:bg-void flex flex-col p-4 sm:p-6 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-24 -left-16 w-[24rem] h-[24rem] bg-plasma/20 dark:bg-plasma/10 blur-3xl rounded-full" />
+        <div className="absolute -bottom-20 -right-8 w-[22rem] h-[22rem] bg-indigo-300/20 dark:bg-indigo-500/10 blur-3xl rounded-full" />
+      </div>
+
       <motion.button
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -168,31 +185,80 @@ export function GoogleAuthScreen() {
         </AnimatePresence>
       </motion.button>
 
-      <div className="w-full max-w-md bg-white/85 dark:bg-graphite/60 backdrop-blur-2xl rounded-3xl sm:rounded-[2rem] p-5 sm:p-8 border border-ghost-400/50 dark:border-void-50/50 shadow-2xl text-center">
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-plasma via-plasma/80 to-purple-600 flex items-center justify-center shadow-glow mb-5">
-          <Lock className="w-8 h-8 text-white" />
-        </div>
+      <div className="flex-1 z-10 w-full max-w-6xl mx-auto grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="hidden lg:block"
+        >
+          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl border border-ghost-400/50 dark:border-void-50/50 bg-white/70 dark:bg-graphite/40 backdrop-blur-xl mb-7">
+            <Sparkles className="w-4 h-4 text-plasma" />
+            <span className="text-sm font-semibold text-graphite dark:text-ghost">World-class real-time messaging</span>
+          </div>
+          <h1 className="text-5xl leading-tight font-heading font-bold text-graphite dark:text-ghost mb-4">
+            Secure chat,
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-plasma to-indigo-500">beautifully fast.</span>
+          </h1>
+          <p className="text-lg text-graphite/65 dark:text-ghost/65 max-w-xl mb-7">
+            Sign in with Google to continue to Dash. Your identity remains verifiable, secure, and tied to your workspace profile.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
+            {[
+              { icon: Shield, label: 'Trusted OAuth' },
+              { icon: Zap, label: 'Realtime sync' },
+              { icon: MessageCircle, label: 'Group messaging' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2 rounded-2xl border border-ghost-400/50 dark:border-void-50/50 bg-white/70 dark:bg-graphite/40 backdrop-blur-xl px-3 py-2.5">
+                <item.icon className="w-4 h-4 text-plasma" />
+                <span className="text-sm font-medium text-graphite/85 dark:text-ghost/85">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-        <h1 className="text-2xl font-heading font-bold text-graphite dark:text-ghost mb-2">Authenticate to continue</h1>
-        <p className="text-graphite/60 dark:text-ghost/60 mb-6">
-          Sign in with Google first, then create your Dash profile.
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+          className="w-full max-w-md mx-auto"
+        >
+          <div className="bg-white/90 dark:bg-graphite/70 backdrop-blur-2xl rounded-[2rem] p-6 sm:p-8 border border-ghost-400/50 dark:border-void-50/50 shadow-2xl text-center">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-plasma via-plasma/80 to-purple-600 flex items-center justify-center shadow-glow mb-5">
+              <Lock className="w-8 h-8 text-white" />
+            </div>
 
-        <div className="flex justify-center min-h-11 w-full overflow-hidden">
-          <div ref={buttonRef} className="w-full flex justify-center" />
-        </div>
+            <h1 className="text-2xl font-heading font-bold text-graphite dark:text-ghost mb-2">Continue to Dash</h1>
+            <p className="text-graphite/60 dark:text-ghost/60 mb-6">
+              Sign in with Google to open your chats and profile.
+            </p>
 
-        {!isScriptReady && !error && (
-          <p className="text-sm text-graphite/50 dark:text-ghost/50 mt-4">Loading Google sign-in...</p>
-        )}
+            <div className="flex justify-center min-h-11 w-full overflow-hidden rounded-xl">
+              <div ref={buttonRef} className="w-full flex justify-center" />
+            </div>
 
-        {isLoading && (
-          <p className="text-sm text-graphite/60 dark:text-ghost/60 mt-4">Completing sign-in...</p>
-        )}
+            {!isScriptReady && !error && (
+              <p className="text-sm text-graphite/55 dark:text-ghost/55 mt-4">Loading Google sign-in...</p>
+            )}
 
-        {error && (
-          <p className="text-sm text-red-500 dark:text-red-400 mt-4">{error}</p>
-        )}
+            {isLoading && (
+              <p className="text-sm text-graphite/65 dark:text-ghost/65 mt-4">Completing sign-in...</p>
+            )}
+
+            {error && (
+              <div className={cn(
+                'mt-4 text-left p-3 rounded-xl border text-sm',
+                'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
+              )}>
+                {error}
+              </div>
+            )}
+
+            <p className="mt-5 text-xs text-graphite/50 dark:text-ghost/50">
+              OAuth-only authentication • Google verified identity
+            </p>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

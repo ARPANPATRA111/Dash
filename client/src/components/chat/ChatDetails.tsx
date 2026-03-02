@@ -36,6 +36,8 @@ export function ChatDetails({ conversation, onClose }: ChatDetailsProps) {
   const users = useChatStore((state) => state.users);
   const presences = useChatStore((state) => state.presences);
   const currentIdentity = useChatStore((state) => state.currentIdentity);
+  const currentUser = useChatStore((state) => state.currentUser);
+  const effectiveIdentity = currentIdentity ?? currentUser?.identity ?? null;
   const messages = useChatStore((state) => state.messages);
   
   const [activeTab, setActiveTab] = useState<'members' | 'media' | 'files'>('members');
@@ -45,14 +47,14 @@ export function ChatDetails({ conversation, onClose }: ChatDetailsProps) {
       .filter((p) => p.conversationId.toString() === conversation.conversationId.toString());
     
     const currentParticipant = convParticipants.find(
-      (p) => currentIdentity && p.userIdentity.isEqual(currentIdentity)
+      (p) => effectiveIdentity && p.userIdentity.isEqual(effectiveIdentity)
     );
     
     const membersWithUsers = convParticipants.map((p) => ({
       participant: p,
       user: users.get(p.userIdentity.toHexString()),
       presence: presences.get(p.userIdentity.toHexString()),
-      isCurrentUser: currentIdentity && p.userIdentity.isEqual(currentIdentity),
+      isCurrentUser: effectiveIdentity && p.userIdentity.isEqual(effectiveIdentity),
     }));
     
     return {
@@ -61,7 +63,7 @@ export function ChatDetails({ conversation, onClose }: ChatDetailsProps) {
       isOwner: currentParticipant?.role === 'owner',
       isAdmin: currentParticipant?.role === 'admin' || currentParticipant?.role === 'owner',
     };
-  }, [participants, users, presences, currentIdentity, conversation.conversationId]);
+  }, [participants, users, presences, effectiveIdentity, conversation.conversationId]);
   
   const displayInfo = useMemo(() => {
     if (conversation.isGroup) {
@@ -114,14 +116,16 @@ export function ChatDetails({ conversation, onClose }: ChatDetailsProps) {
   };
   
   return (
-    <div className="w-80 h-full bg-graphite/50 flex flex-col">
+    <div className="w-80 h-full bg-white/95 dark:bg-graphite/50 flex flex-col">
       <div className="p-4 border-b border-ghost/10 flex items-center justify-between">
-        <h2 className="font-medium text-ghost">Details</h2>
+        <h2 className="font-medium text-graphite dark:text-ghost">Details</h2>
         <button
           onClick={onClose}
+          title="Close details"
+          aria-label="Close details"
           className="p-1.5 hover:bg-ghost/10 rounded-lg transition-colors"
         >
-          <X className="w-5 h-5 text-ghost/60" />
+          <X className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
         </button>
       </div>
       
@@ -143,24 +147,24 @@ export function ChatDetails({ conversation, onClose }: ChatDetailsProps) {
             )}
           </div>
           
-          <h3 className="text-xl font-medium text-ghost mb-1">
+          <h3 className="text-xl font-medium text-graphite dark:text-ghost mb-1">
             {displayInfo.name}
           </h3>
           
           {displayInfo.isGroup ? (
-            <p className="text-sm text-ghost/50">
+            <p className="text-sm text-graphite/55 dark:text-ghost/50">
               {participantInfo.members.length} members
             </p>
           ) : displayInfo.username ? (
-            <p className="text-sm text-ghost/50">@{displayInfo.username}</p>
+            <p className="text-sm text-graphite/55 dark:text-ghost/50">@{displayInfo.username}</p>
           ) : null}
           
           {!displayInfo.isGroup && displayInfo.bio && (
-            <p className="mt-3 text-sm text-ghost/60">{displayInfo.bio}</p>
+            <p className="mt-3 text-sm text-graphite/65 dark:text-ghost/60">{displayInfo.bio}</p>
           )}
           
           {conversation.isGroup && conversation.description && (
-            <p className="mt-3 text-sm text-ghost/60">{conversation.description}</p>
+            <p className="mt-3 text-sm text-graphite/65 dark:text-ghost/60">{conversation.description}</p>
           )}
         </div>
         

@@ -35,6 +35,19 @@ function toTimestamp(ts: { __timestamp_micros_since_unix_epoch__: bigint } | Tim
 }
 
 export async function connectToSpacetimeDB(): Promise<DbConnection> {
+  return connectToSpacetimeDBInternal(true);
+}
+
+function shouldRetryWithoutToken(error: Error): boolean {
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('unauthorized') ||
+    message.includes('invalid token') ||
+    message.includes('token') && message.includes('expired')
+  );
+}
+
+async function connectToSpacetimeDBInternal(allowTokenRetry: boolean): Promise<DbConnection> {
   const chatStore = useChatStore.getState();
   const authStore = useAuthStore.getState();
 
@@ -60,7 +73,7 @@ export async function connectToSpacetimeDB(): Promise<DbConnection> {
   chatStore.setConnectionError(null);
 
   try {
-    console.log(`[SpacetimeDB] Connecting to ${SPACETIMEDB_HOST}/${SPACETIMEDB_MODULE}...`);
+    // console.log(`[SpacetimeDB] Connecting to ${SPACETIMEDB_HOST}/${SPACETIMEDB_MODULE}...`);
     
     const builder = DbConnection.builder()
       .withUri(SPACETIMEDB_HOST)
@@ -89,6 +102,16 @@ export async function connectToSpacetimeDB(): Promise<DbConnection> {
         })
         .onConnectError((_ctx: ErrorContext, error: Error) => {
           console.error('[SpacetimeDB] Connection error:', error);
+
+          if (allowTokenRetry && authStore.token && shouldRetryWithoutToken(error)) {
+            console.warn('[SpacetimeDB] Token rejected; clearing cached token and retrying once');
+            useAuthStore.getState().setToken(null);
+            chatStore.setConnecting(false);
+            chatStore.setConnectionError(null);
+            connectToSpacetimeDBInternal(false).then(resolve).catch(reject);
+            return;
+          }
+
           chatStore.setConnecting(false);
           chatStore.setConnectionError(error.message);
           reject(error);
@@ -110,6 +133,31 @@ export async function connectToSpacetimeDB(): Promise<DbConnection> {
 function setupTableSubscriptions(conn: DbConnection) {
   const chatStore = useChatStore.getState();
 
+  const syncCurrentUserIfMatch = (user: User) => {
+    const currentIdentity = useChatStore.getState().currentIdentity;
+    const normalizedAuthEmail = useAuthStore.getState().userEmail?.trim().toLowerCase();
+    const isIdentityMatch = currentIdentity
+      ? user.identity.toHexString() === currentIdentity.toHexString()
+      : false;
+    const isEmailMatch = normalizedAuthEmail
+      ? (user.email ?? '').toLowerCase() === normalizedAuthEmail
+      : false;
+
+    if (!isIdentityMatch && !isEmailMatch) {
+      return;
+    }
+
+    useChatStore.getState().setCurrentUser(user);
+    useAuthStore.getState().setIsRegistered(true);
+    useAuthStore.getState().setNeedsProfileSetup(false);
+    console.debug('[SpacetimeDB] Current user hydrated', {
+      matchType: isIdentityMatch ? 'identity' : 'email',
+      identity: user.identity.toHexString(),
+      email: user.email,
+      username: user.username,
+    });
+  };
+
   conn.db.user.onInsert((_ctx, row) => {
     const user: User = {
       identity: row.identity,
@@ -126,14 +174,7 @@ function setupTableSubscriptions(conn: DbConnection) {
       updatedAt: toTimestamp(row.updatedAt),
     };
     chatStore.setUser(user);
-    
-    const currentIdentity = useChatStore.getState().currentIdentity;
-    if (currentIdentity && row.identity.toHexString() === currentIdentity.toHexString()) {
-      useChatStore.getState().setCurrentUser(user);
-      useAuthStore.getState().setIsRegistered(true);
-      useAuthStore.getState().setNeedsProfileSetup(false);
-      console.log('[SpacetimeDB] Current user loaded:', user.username);
-    }
+    syncCurrentUserIfMatch(user);
   });
 
   conn.db.user.onUpdate((_ctx, _oldRow, newRow) => {
@@ -152,14 +193,7 @@ function setupTableSubscriptions(conn: DbConnection) {
       updatedAt: toTimestamp(newRow.updatedAt),
     };
     chatStore.setUser(user);
-    
-    const currentIdentity = useChatStore.getState().currentIdentity;
-    if (currentIdentity && newRow.identity.toHexString() === currentIdentity.toHexString()) {
-      useChatStore.getState().setCurrentUser(user);
-      useAuthStore.getState().setIsRegistered(true);
-      useAuthStore.getState().setNeedsProfileSetup(false);
-      console.log('[SpacetimeDB] Current user updated:', user.username);
-    }
+    syncCurrentUserIfMatch(user);
   });
 
   conn.db.user.onDelete((_ctx, row) => {

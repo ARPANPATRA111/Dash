@@ -85,6 +85,7 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   
   const reactions = getMessageReactions(message.messageId);
   const attachments = getMessageAttachments(message.messageId);
@@ -157,17 +158,33 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
     }
   };
 
-  const startLongPress = () => {
+  const startLongPress = (e: React.TouchEvent | React.MouseEvent) => {
     clearLongPressTimer();
     longPressTriggeredRef.current = false;
+    if ('touches' in e && e.touches.length > 0) {
+      touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if ('clientX' in e) {
+      touchStartPosRef.current = { x: e.clientX, y: e.clientY };
+    }
     longPressTimerRef.current = setTimeout(() => {
       longPressTriggeredRef.current = true;
       setShowActions(true);
-    }, 380);
+    }, 400);
   };
 
   const endLongPress = () => {
     clearLongPressTimer();
+    touchStartPosRef.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPosRef.current || !longPressTimerRef.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+    if (dx > 15 || dy > 15) {
+      clearLongPressTimer();
+    }
   };
 
   const handleTouchEnd = () => {
@@ -186,36 +203,40 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
 
   const openImageInNewWindow = (rawUrl: string, fileName: string) => {
     const trimmed = rawUrl.trim();
-    if (!trimmed || trimmed.startsWith('blob:')) {
+    if (!trimmed || trimmed.startsWith('blob:') || trimmed.startsWith('javascript:')) {
       return;
     }
 
-    if (trimmed.startsWith('javascript:')) {
-      return;
-    }
-
-    const normalizedUrl = trimmed.startsWith('http://')
-      ? `https://${trimmed.slice('http://'.length)}`
+    const imageUrl = trimmed.startsWith('http://')
+      ? `https://${trimmed.slice(7)}`
       : trimmed;
 
-    const popup = window.open('', '_blank', 'noopener,noreferrer');
-    if (!popup) {
-      return;
+    const escapedTitle = fileName.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const escapedUrl = imageUrl.replace(/"/g, '&quot;');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapedTitle}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0b0b0f; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
+    .error { color: #ff6b6b; font-family: system-ui, sans-serif; text-align: center; padding: 2rem; }
+  </style>
+</head>
+<body>
+  <img src="${escapedUrl}" alt="${escapedTitle}" onerror="this.outerHTML='<div class=error>Failed to load image</div>'" />
+</body>
+</html>`;
+
+    const popup = window.open('about:blank', '_blank');
+    if (popup) {
+      popup.document.write(html);
+      popup.document.close();
     }
-
-    popup.document.title = fileName;
-    popup.document.body.style.margin = '0';
-    popup.document.body.style.background = '#0b0b0f';
-    popup.document.body.style.display = 'grid';
-    popup.document.body.style.placeItems = 'center';
-
-    const image = popup.document.createElement('img');
-    image.src = normalizedUrl;
-    image.alt = fileName;
-    image.style.maxWidth = '100vw';
-    image.style.maxHeight = '100vh';
-    image.style.objectFit = 'contain';
-    popup.document.body.appendChild(image);
   };
   
   if (message.isDeleted) {
@@ -234,15 +255,13 @@ export function MessageBubble({ message, isOwn, sender, showSender }: MessageBub
         'group flex gap-2',
         isOwn ? 'justify-end' : 'justify-start'
       )}
-      onMouseDown={startLongPress}
+      onMouseDown={(e) => startLongPress(e)}
       onMouseUp={endLongPress}
-      onMouseLeave={() => {
-        endLongPress();
-      }}
-      onTouchStart={startLongPress}
+      onMouseLeave={endLongPress}
+      onTouchStart={(e) => startLongPress(e)}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={endLongPress}
-      onTouchMove={endLongPress}
+      onTouchMove={handleTouchMove}
     >
       {!isOwn && showSender && (
         <Avatar

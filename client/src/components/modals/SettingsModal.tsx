@@ -49,19 +49,21 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
         >
           <div className="card p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-heading font-bold text-ghost">Settings</h2>
+              <h2 className="text-xl font-heading font-bold text-graphite dark:text-ghost">Settings</h2>
               <button
                 onClick={onClose}
+                title="Close settings"
+                aria-label="Close settings"
                 className="p-2 hover:bg-ghost/10 rounded-xl transition-colors"
               >
-                <X className="w-5 h-5 text-ghost/60" />
+                <X className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
               </button>
             </div>
             
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <Palette className="w-5 h-5 text-ghost/60" />
-                <h3 className="font-medium text-ghost">Theme</h3>
+                <Palette className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
+                <h3 className="font-medium text-graphite dark:text-ghost">Theme</h3>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <button
@@ -70,7 +72,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     'flex flex-col items-center gap-2 p-3 rounded-xl border transition-colors',
                     theme === 'light'
                       ? 'bg-plasma/20 border-plasma/50 text-plasma'
-                      : 'border-ghost/10 text-ghost/60 hover:bg-ghost/5'
+                      : 'border-ghost/20 text-graphite/70 dark:text-ghost/60 hover:bg-ghost/10'
                   )}
                 >
                   <Sun className="w-5 h-5" />
@@ -82,7 +84,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     'flex flex-col items-center gap-2 p-3 rounded-xl border transition-colors',
                     theme === 'dark'
                       ? 'bg-plasma/20 border-plasma/50 text-plasma'
-                      : 'border-ghost/10 text-ghost/60 hover:bg-ghost/5'
+                      : 'border-ghost/20 text-graphite/70 dark:text-ghost/60 hover:bg-ghost/10'
                   )}
                 >
                   <Moon className="w-5 h-5" />
@@ -94,7 +96,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     'flex flex-col items-center gap-2 p-3 rounded-xl border transition-colors',
                     theme === 'system'
                       ? 'bg-plasma/20 border-plasma/50 text-plasma'
-                      : 'border-ghost/10 text-ghost/60 hover:bg-ghost/5'
+                      : 'border-ghost/20 text-graphite/70 dark:text-ghost/60 hover:bg-ghost/10'
                   )}
                 >
                   <Monitor className="w-5 h-5" />
@@ -105,8 +107,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <Bell className="w-5 h-5 text-ghost/60" />
-                <h3 className="font-medium text-ghost">Notifications</h3>
+                <Bell className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
+                <h3 className="font-medium text-graphite dark:text-ghost">Notifications</h3>
               </div>
               <div className="space-y-2">
                 <button
@@ -115,11 +117,11 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 >
                   <div className="flex items-center gap-3">
                     {notificationsEnabled ? (
-                      <Bell className="w-5 h-5 text-ghost/60" />
+                      <Bell className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                     ) : (
-                      <BellOff className="w-5 h-5 text-ghost/60" />
+                      <BellOff className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                     )}
-                    <span className="text-sm text-ghost">Push notifications</span>
+                    <span className="text-sm text-graphite dark:text-ghost">Push notifications</span>
                   </div>
                   <div
                     className={cn(
@@ -140,11 +142,11 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 >
                   <div className="flex items-center gap-3">
                     {soundEnabled ? (
-                      <Volume2 className="w-5 h-5 text-ghost/60" />
+                      <Volume2 className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                     ) : (
-                      <VolumeX className="w-5 h-5 text-ghost/60" />
+                      <VolumeX className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                     )}
-                    <span className="text-sm text-ghost">Sound effects</span>
+                    <span className="text-sm text-graphite dark:text-ghost">Sound effects</span>
                   </div>
                   <div
                     className={cn(
@@ -163,18 +165,18 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <Layout className="w-5 h-5 text-ghost/60" />
-                <h3 className="font-medium text-ghost">Display</h3>
+                <Layout className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
+                <h3 className="font-medium text-graphite dark:text-ghost">Display</h3>
               </div>
               <button
                 onClick={() => setCompactMode(!compactMode)}
                 className="w-full flex items-center justify-between p-3 hover:bg-ghost/5 rounded-xl transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <Layout className="w-5 h-5 text-ghost/60" />
+                  <Layout className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                   <div className="text-left">
-                    <span className="text-sm text-ghost block">Compact mode</span>
-                    <span className="text-xs text-ghost/50">Show more messages on screen</span>
+                    <span className="text-sm text-graphite dark:text-ghost block">Compact mode</span>
+                    <span className="text-xs text-graphite/50 dark:text-ghost/50">Show more messages on screen</span>
                   </div>
                 </div>
                 <div
@@ -192,7 +194,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             </div>
             
             <div className="mt-6 pt-6 border-t border-ghost/10 text-center">
-              <p className="text-xs text-ghost/40">
+              <p className="text-xs text-graphite/45 dark:text-ghost/40">
                 Dash v1.0.0 • Built with SpacetimeDB
               </p>
             </div>

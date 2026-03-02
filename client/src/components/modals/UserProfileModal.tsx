@@ -88,19 +88,23 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
         >
           <div className="card p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-heading font-bold text-ghost">Profile</h2>
+              <h2 className="text-xl font-heading font-bold text-graphite dark:text-ghost">Profile</h2>
               <div className="flex items-center gap-2">
                 {isEditing ? (
                   <>
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="p-2 hover:bg-ghost/10 rounded-xl transition-colors text-ghost/60"
+                      title="Cancel editing"
+                      aria-label="Cancel editing"
+                      className="p-2 hover:bg-ghost/10 rounded-xl transition-colors text-graphite/60 dark:text-ghost/60"
                     >
                       <X className="w-5 h-5" />
                     </button>
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
+                      title="Save profile"
+                      aria-label="Save profile"
                       className="p-2 bg-plasma/20 hover:bg-plasma/30 rounded-xl transition-colors text-plasma"
                     >
                       <Check className="w-5 h-5" />
@@ -110,15 +114,19 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                   <>
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="p-2 hover:bg-ghost/10 rounded-xl transition-colors text-ghost/60"
+                      title="Edit profile"
+                      aria-label="Edit profile"
+                      className="p-2 hover:bg-ghost/10 rounded-xl transition-colors text-graphite/60 dark:text-ghost/60"
                     >
                       <Edit2 className="w-5 h-5" />
                     </button>
                     <button
                       onClick={onClose}
+                      title="Close profile"
+                      aria-label="Close profile"
                       className="p-2 hover:bg-ghost/10 rounded-xl transition-colors"
                     >
-                      <X className="w-5 h-5 text-ghost/60" />
+                      <X className="w-5 h-5 text-graphite/60 dark:text-ghost/60" />
                     </button>
                   </>
                 )}
@@ -133,7 +141,7 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                   size="xl"
                 />
                 {isEditing && (
-                  <button className="absolute bottom-0 right-0 p-2 bg-plasma rounded-full">
+                  <button title="Change avatar" aria-label="Change avatar" className="absolute bottom-0 right-0 p-2 bg-plasma rounded-full">
                     <ImageIcon className="w-4 h-4 text-white" />
                   </button>
                 )}
@@ -142,7 +150,7 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
             
             <div className="space-y-4">
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-ghost/80 mb-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-graphite/80 dark:text-ghost/80 mb-2">
                   <User className="w-4 h-4" />
                   Display Name
                 </label>
@@ -151,16 +159,17 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
+                    title="Display name"
                     className="input-field"
                     maxLength={50}
                   />
                 ) : (
-                  <p className="text-ghost px-4 py-2.5">{currentUser?.displayName}</p>
+                  <p className="text-graphite dark:text-ghost px-4 py-2.5">{currentUser?.displayName}</p>
                 )}
               </div>
               
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-ghost/80 mb-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-graphite/80 dark:text-ghost/80 mb-2">
                   <AtSign className="w-4 h-4" />
                   Username
                 </label>
@@ -169,16 +178,17 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
+                    title="Username"
                     className="input-field"
                     maxLength={20}
                   />
                 ) : (
-                  <p className="text-ghost px-4 py-2.5">@{currentUser?.username}</p>
+                  <p className="text-graphite dark:text-ghost px-4 py-2.5">@{currentUser?.username}</p>
                 )}
               </div>
               
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-ghost/80 mb-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-graphite/80 dark:text-ghost/80 mb-2">
                   <FileText className="w-4 h-4" />
                   Bio
                 </label>
@@ -192,7 +202,7 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                     placeholder="Tell us about yourself..."
                   />
                 ) : (
-                  <p className="text-ghost/70 px-4 py-2.5">
+                  <p className="text-graphite/70 dark:text-ghost/70 px-4 py-2.5">
                     {currentUser?.bio || 'No bio yet'}
                   </p>
                 )}
@@ -200,7 +210,7 @@ export function UserProfileModal({ open, onClose }: UserProfileModalProps) {
               
               {isEditing && (
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-ghost/80 mb-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-graphite/80 dark:text-ghost/80 mb-2">
                     <ImageIcon className="w-4 h-4" />
                     Avatar URL
                   </label>

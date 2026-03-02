@@ -10,20 +10,20 @@
     /* Core brand colors */
     --void: 10 10 20;
     --plasma: 123 97 255;
-    --ghost: 240 239 244;
+    --ghost: 246 248 252;
     --graphite: 24 24 27;
 
     /* Light theme (default) */
-    --background: 240 239 244;
-    --foreground: 24 24 27;
+    --background: 248 250 252;
+    --foreground: 17 24 39;
     --card: 255 255 255;
-    --card-foreground: 24 24 27;
+    --card-foreground: 17 24 39;
     --popover: 255 255 255;
-    --popover-foreground: 24 24 27;
+    --popover-foreground: 17 24 39;
     --primary: 123 97 255;
     --primary-foreground: 255 255 255;
-    --secondary: 241 245 249;
-    --secondary-foreground: 24 24 27;
+    --secondary: 243 246 255;
+    --secondary-foreground: 30 41 59;
     --muted: 241 245 249;
     --muted-foreground: 100 116 139;
     --accent: 123 97 255;
@@ -71,6 +71,7 @@
     @apply antialiased font-sans bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     transition: background-color 0.3s ease, color 0.3s ease;
+    background-image: radial-gradient(circle at 20% 0%, rgba(123, 97, 255, 0.08) 0%, rgba(123, 97, 255, 0) 45%);
   }
 }
 
@@ -202,9 +203,9 @@
 
 @layer components {
   .card {
-    @apply bg-white dark:bg-void-100 
+      @apply bg-white/95 dark:bg-void-100 
            rounded-3xl p-6
-           border border-ghost-400/30 dark:border-void-50/30
+        border border-slate-200/80 dark:border-void-50/30
            shadow-card transition-all duration-300;
   }
 
@@ -224,8 +225,8 @@
   .input,
   .input-field {
     @apply w-full px-4 py-3 rounded-2xl
-           bg-ghost-400/30 dark:bg-void-100/50
-           border border-ghost-400 dark:border-void-50
+           bg-white dark:bg-void-100/50
+           border border-slate-300/80 dark:border-void-50
            text-graphite dark:text-ghost
            placeholder:text-graphite/40 dark:placeholder:text-ghost/40
            focus:outline-none focus:ring-2 focus:ring-plasma/50 focus:border-plasma
